@@ -80,11 +80,14 @@ full spec.
   (smoothstep-tapered `radiusFn`, particles advancing by
   `velocity/area(x)`, speed-colored draw loop); sanity-checked against a
   throwaway profile — not yet wired into either tool.
-- `[ ]` **Phase 3 — Venturi Tube tool**: template (mode toggle
+- `[x]` **Phase 3 — Venturi Tube tool**: template (mode toggle
   convergent/divergent, throat-diameter + inlet-velocity sliders, fluid
   dropdown + custom density, canvas, live velocity/pressure readouts,
   theory panel with continuity + Bernoulli equations, h1=h2=0 assumption
-  stated). `initVenturiTool` wires physics + shared viz + inputs.
+  stated). `initVenturiTool` wires physics + shared viz + inputs. Geometry
+  is a fixed symmetric venturi (inlet diameter == outlet diameter, throat
+  adjustable); the mode toggle switches which theory text/segment is
+  emphasized rather than reshaping the pipe.
 - `[ ]` **Phase 4 — Bernoulli/Continuity tool**: template (reuses shared
   viz with a simple two-point taper, elevation h1/h2 numeric inputs shown
   as flat-pipe side labels, live Bernoulli term readout table, continuity

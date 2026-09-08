@@ -201,6 +201,91 @@
 
   .theory-panel summary::-webkit-details-marker { display: none; }
 
+  .theory-panel .eq {
+    font-size: 12.5px;
+    margin: 10px 0;
+  }
+
+  .theory-panel .theory-text {
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.5;
+    margin: 10px 0 0;
+  }
+
+  .tool-title { margin: 0 0 4px; font-size: 19px; font-weight: 600; }
+  .tool-subtitle { margin: 0 0 20px; color: var(--muted); font-size: 13px; }
+
+  .segmented {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .segmented-btn {
+    flex: 1;
+    text-align: center;
+    padding: 7px 0;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    background: transparent;
+    color: var(--fg);
+    border: none;
+    cursor: pointer;
+  }
+
+  .segmented-btn.active { background: var(--accent); color: #fff; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+
+  .field-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+  }
+
+  .field-value { color: var(--accent); }
+
+  input[type="range"] { accent-color: var(--accent); width: 100%; }
+
+  select, input[type="number"] {
+    font: inherit;
+    font-size: 12.5px;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--card-bg);
+    color: var(--fg);
+    width: 100%;
+  }
+
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .stat-card {
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--card-bg);
+  }
+
+  .stat-card.highlight { border-color: var(--accent); }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .stat-velocity { font-size: 15px; margin-top: 6px; color: var(--accent); }
+  .stat-pressure { font-size: 13px; margin-top: 2px; color: var(--accent-2); }
+
   @media (max-width: 720px) {
     .tool-layout { flex-direction: column; }
     .tool-sidebar { width: 100%; }
@@ -243,8 +328,72 @@
 
 <template id="tpl-venturi">
   <div>
-    <h2>Venturi Tube</h2>
-    <p style="color: var(--muted);">Placeholder — built in Phase 3.</p>
+    <h2 class="tool-title">Venturi Tube</h2>
+    <p class="tool-subtitle">Ideal, frictionless flow through a symmetric venturi section (elevation change assumed zero).</p>
+
+    <div class="tool-layout">
+      <div class="tool-sidebar">
+        <div class="segmented">
+          <button type="button" class="segmented-btn active" data-role="mode-convergent">Convergent</button>
+          <button type="button" class="segmented-btn" data-role="mode-divergent">Divergent</button>
+        </div>
+
+        <div class="field">
+          <div class="field-row"><span>Throat diameter</span><span class="mono field-value" data-role="throat-diameter-value"></span></div>
+          <input type="range" data-role="throat-diameter" min="10" max="35" step="1" value="18">
+        </div>
+
+        <div class="field">
+          <div class="field-row"><span>Inlet velocity</span><span class="mono field-value" data-role="inlet-velocity-value"></span></div>
+          <input type="range" data-role="inlet-velocity" min="0.5" max="5" step="0.1" value="2.4">
+        </div>
+
+        <div class="field">
+          <div class="field-row"><span>Fluid</span></div>
+          <select data-role="fluid-select">
+            <option value="water">Water</option>
+            <option value="air">Air</option>
+            <option value="oil">Oil</option>
+            <option value="custom">Custom&hellip;</option>
+          </select>
+        </div>
+
+        <div class="field" data-role="custom-density-wrap" hidden>
+          <div class="field-row"><span>Density</span><span class="mono field-value" data-role="custom-density-value"></span></div>
+          <input type="number" data-role="custom-density-input" min="0.1" step="1" value="1000">
+        </div>
+
+        <details class="theory-panel">
+          <summary>How it works</summary>
+          <p class="mono eq">Continuity:&nbsp; A&#8321;V&#8321; = A&#8322;V&#8322;</p>
+          <p class="mono eq">Bernoulli (h&#8321;=h&#8322;=0):&nbsp; P&#8321; + &#189;&rho;V&#8321;&sup2; = P&#8322; + &#189;&rho;V&#8322;&sup2;</p>
+          <p class="theory-text" data-role="theory-text"></p>
+        </details>
+      </div>
+
+      <div class="tool-main">
+        <div class="viz-panel">
+          <canvas data-role="canvas" style="width:100%; height:180px; display:block;"></canvas>
+        </div>
+        <div class="stat-row">
+          <div class="stat-card" data-role="stat-inlet">
+            <div class="stat-label">Inlet</div>
+            <div class="mono stat-velocity" data-role="inlet-velocity-out"></div>
+            <div class="mono stat-pressure" data-role="inlet-pressure-out"></div>
+          </div>
+          <div class="stat-card highlight" data-role="stat-throat">
+            <div class="stat-label">Throat</div>
+            <div class="mono stat-velocity" data-role="throat-velocity-out"></div>
+            <div class="mono stat-pressure" data-role="throat-pressure-out"></div>
+          </div>
+          <div class="stat-card" data-role="stat-outlet">
+            <div class="stat-label">Outlet</div>
+            <div class="mono stat-velocity" data-role="outlet-velocity-out"></div>
+            <div class="mono stat-pressure" data-role="outlet-pressure-out"></div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -530,9 +679,172 @@
     }
   ];
 
+  var VENTURI_D_INLET = 0.04; // m, fixed preset (inlet diameter == outlet diameter)
+  var VENTURI_P_REF = 101325; // Pa, assumed reference pressure at inlet/outlet
+
+  var VENTURI_THEORY = {
+    convergent: 'As the pipe narrows toward the throat, continuity requires the flow to speed up. ' +
+      'Bernoulli’s equation then requires pressure to drop — this converging section converts ' +
+      'pressure energy into kinetic energy.',
+    divergent: 'As the pipe widens back out after the throat, the flow slows back down and pressure ' +
+      'recovers accordingly. Real diffusers recover pressure less completely than this ideal model, ' +
+      'due to friction and flow separation not modeled here.'
+  };
+
   function initVenturiTool(root) {
-    // Real implementation lands in Phase 3.
-    return { destroy: function () {} };
+    var el = {
+      modeConvergent: root.querySelector('[data-role="mode-convergent"]'),
+      modeDivergent: root.querySelector('[data-role="mode-divergent"]'),
+      throatSlider: root.querySelector('[data-role="throat-diameter"]'),
+      throatValue: root.querySelector('[data-role="throat-diameter-value"]'),
+      velocitySlider: root.querySelector('[data-role="inlet-velocity"]'),
+      velocityValue: root.querySelector('[data-role="inlet-velocity-value"]'),
+      fluidSelect: root.querySelector('[data-role="fluid-select"]'),
+      customDensityWrap: root.querySelector('[data-role="custom-density-wrap"]'),
+      customDensityInput: root.querySelector('[data-role="custom-density-input"]'),
+      customDensityValue: root.querySelector('[data-role="custom-density-value"]'),
+      theoryText: root.querySelector('[data-role="theory-text"]'),
+      canvas: root.querySelector('[data-role="canvas"]'),
+      inletV: root.querySelector('[data-role="inlet-velocity-out"]'),
+      inletP: root.querySelector('[data-role="inlet-pressure-out"]'),
+      throatV: root.querySelector('[data-role="throat-velocity-out"]'),
+      throatP: root.querySelector('[data-role="throat-pressure-out"]'),
+      outletV: root.querySelector('[data-role="outlet-velocity-out"]'),
+      outletP: root.querySelector('[data-role="outlet-pressure-out"]')
+    };
+
+    var state = {
+      mode: 'convergent',
+      throatDiameterMm: parseFloat(el.throatSlider.value),
+      inletVelocity: parseFloat(el.velocitySlider.value),
+      fluidKey: 'water',
+      customDensity: parseFloat(el.customDensityInput.value)
+    };
+
+    function currentDensity() {
+      if (state.fluidKey === 'custom') return state.customDensity;
+      return FLUID_PRESETS[state.fluidKey].density;
+    }
+
+    function compute() {
+      var aInlet = Physics.areaFromDiameter(VENTURI_D_INLET);
+      var aThroat = Physics.areaFromDiameter(state.throatDiameterMm / 1000);
+      var vInlet = state.inletVelocity;
+      var vThroat = Physics.continuityVelocity(aInlet, vInlet, aThroat);
+      var vOutlet = Physics.continuityVelocity(aThroat, vThroat, aInlet);
+      var rho = currentDensity();
+      var tInlet = Physics.bernoulliTerms(rho, vInlet, 0);
+      var tThroat = Physics.bernoulliTerms(rho, vThroat, 0);
+      var tOutlet = Physics.bernoulliTerms(rho, vOutlet, 0);
+      return {
+        vInlet: vInlet,
+        vThroat: vThroat,
+        vOutlet: vOutlet,
+        pInlet: VENTURI_P_REF,
+        pThroat: VENTURI_P_REF + (tInlet.dynamic - tThroat.dynamic),
+        pOutlet: VENTURI_P_REF + (tInlet.dynamic - tOutlet.dynamic)
+      };
+    }
+
+    function formatVelocity(v) { return v.toFixed(1) + ' m/s'; }
+    function formatPressure(p) { return (p / 1000).toFixed(1) + ' kPa'; }
+
+    function updateReadouts() {
+      var r = compute();
+      el.inletV.textContent = formatVelocity(r.vInlet);
+      el.inletP.textContent = formatPressure(r.pInlet);
+      el.throatV.textContent = formatVelocity(r.vThroat);
+      el.throatP.textContent = formatPressure(r.pThroat);
+      el.outletV.textContent = formatVelocity(r.vOutlet);
+      el.outletP.textContent = formatPressure(r.pOutlet);
+    }
+
+    function updateLabels() {
+      el.throatValue.textContent = state.throatDiameterMm.toFixed(0) + ' mm';
+      el.velocityValue.textContent = state.inletVelocity.toFixed(1) + ' m/s';
+      el.customDensityValue.textContent = state.customDensity.toFixed(0) + ' kg/m³';
+    }
+
+    function updateTheory() {
+      el.theoryText.textContent = VENTURI_THEORY[state.mode];
+    }
+
+    function throatRadiusNormalized() {
+      var min = parseFloat(el.throatSlider.min);
+      var max = parseFloat(el.throatSlider.max);
+      var t = (state.throatDiameterMm - min) / (max - min);
+      return 0.15 + t * (0.5 - 0.15);
+    }
+
+    function getProfile() {
+      var rWide = 0.5;
+      var rThroat = throatRadiusNormalized();
+      return {
+        radiusFn: function (x) {
+          if (x < 0.5) return PipeGeometry.smoothTaper(x, 0, 0.5, rWide, rThroat);
+          return PipeGeometry.smoothTaper(x, 0.5, 1, rThroat, rWide);
+        }
+      };
+    }
+
+    var viz = createPipeFlowViz(el.canvas, {
+      getProfile: getProfile,
+      getInletVelocity: function () { return state.inletVelocity; },
+      particleCount: 16
+    });
+    viz.start();
+
+    function onResize() { viz.resize(); }
+    window.addEventListener('resize', onResize);
+
+    el.modeConvergent.addEventListener('click', function () {
+      state.mode = 'convergent';
+      el.modeConvergent.classList.add('active');
+      el.modeDivergent.classList.remove('active');
+      updateTheory();
+    });
+
+    el.modeDivergent.addEventListener('click', function () {
+      state.mode = 'divergent';
+      el.modeDivergent.classList.add('active');
+      el.modeConvergent.classList.remove('active');
+      updateTheory();
+    });
+
+    el.throatSlider.addEventListener('input', function () {
+      state.throatDiameterMm = parseFloat(el.throatSlider.value);
+      updateLabels();
+      updateReadouts();
+    });
+
+    el.velocitySlider.addEventListener('input', function () {
+      state.inletVelocity = parseFloat(el.velocitySlider.value);
+      updateLabels();
+      updateReadouts();
+    });
+
+    el.fluidSelect.addEventListener('change', function () {
+      state.fluidKey = el.fluidSelect.value;
+      el.customDensityWrap.hidden = state.fluidKey !== 'custom';
+      updateReadouts();
+    });
+
+    el.customDensityInput.addEventListener('input', function () {
+      state.customDensity = parseFloat(el.customDensityInput.value) || 0;
+      updateLabels();
+      updateReadouts();
+    });
+
+    updateLabels();
+    updateReadouts();
+    updateTheory();
+
+    return {
+      destroy: function () {
+        viz.stop();
+        window.removeEventListener('resize', onResize);
+      }
+    };
   }
 
   function initBernoulliTool(root) {
