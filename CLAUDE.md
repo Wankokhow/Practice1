@@ -27,3 +27,53 @@ When implementing any feature, keep all markup, styles, and scripts inside
 - Before implementing any non-trivial feature, ask clarifying questions about
   scope, edge cases, and constraints first — don't propose a plan until
   you've asked.
+
+## Feature Plan
+
+Status legend: `[ ]` not started, `[x]` done. Mark phases done or prune
+finished detail as work progresses — keep this section skimmable, not a
+full spec.
+
+### Data model (shared across all phases)
+- `TOOL_REGISTRY` entry: `{ id, title, description, templateId, init }`
+- `FLUID_PRESETS`: `{ water: 1000, air: 1.225, oil: 900 }` (kg/m³) + custom
+  density option
+- Physics module: `areaFromDiameter(d)`, `continuityVelocity(A1,V1,A2)`,
+  `solveContinuity({A1,V1,A2,V2})`, `bernoulliTerms(rho,V,h,g)`
+
+### Key flows (shared across all phases)
+- **Navigation**: hashchange → look up registry entry by id → destroy
+  currently mounted tool → clone its `<template>` into `#tool-mount` → call
+  `init(root)`
+- **Mount/unmount**: `init(root)` wires its own controls + rAF loop,
+  returns `{ destroy() }`; router always destroys before remounting
+- **Input → viz**: a tool's slider/dropdown changes update closures read by
+  `createPipeFlowViz`'s `getProfile()`/`getInletVelocity()`, so the shared
+  animation reflects current state with no extra glue
+- **Theme**: toggle → `data-theme` attr + `localStorage['fdl-theme']` → all
+  CSS via custom properties + canvas colors re-read at draw time
+
+### Phases
+- `[ ]` **Phase 1 — Shell & routing**: header (title, Home button, theme
+  toggle), home/tool view containers, empty `<template>` stubs, tool
+  registry + hash router + grid renderer, theme toggle via CSS vars +
+  localStorage. Proven with 2 placeholder empty templates before any real
+  tool exists.
+- `[ ]` **Phase 2 — Shared physics + pipe-flow viz**: physics module (pure
+  functions, no DOM); `createPipeFlowViz(canvas, options)` factory
+  (smoothstep-tapered `radiusFn`, particles advancing by
+  `velocity/area(x)`, speed-colored draw loop); sanity-checked against a
+  throwaway profile before any tool wires it in.
+- `[ ]` **Phase 3 — Venturi Tube tool**: template (mode toggle
+  convergent/divergent, throat-diameter + inlet-velocity sliders, fluid
+  dropdown + custom density, canvas, live velocity/pressure readouts,
+  theory panel with continuity + Bernoulli equations, h1=h2=0 assumption
+  stated). `initVenturiTool` wires physics + shared viz + inputs.
+- `[ ]` **Phase 4 — Bernoulli/Continuity tool**: template (reuses shared
+  viz with a simple two-point taper, elevation h1/h2 numeric inputs shown
+  as flat-pipe side labels, live Bernoulli term readout table, continuity
+  solve-for-unknowns form with exactly-one-blank validation, own theory
+  panel). `initBernoulliTool` wires physics + shared viz + solver.
+- `[ ]` **Phase 5 — Polish**: correct teardown on rapid tool switching (no
+  leaked rAF loops), responsive layout at narrow widths, dark-mode
+  canvas/particle contrast check, initial-hash-on-load deep linking.
