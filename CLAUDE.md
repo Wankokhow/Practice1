@@ -88,11 +88,13 @@ full spec.
   is a fixed symmetric venturi (inlet diameter == outlet diameter, throat
   adjustable); the mode toggle switches which theory text/segment is
   emphasized rather than reshaping the pipe.
-- `[ ]` **Phase 4 — Bernoulli/Continuity tool**: template (reuses shared
+- `[x]` **Phase 4 — Bernoulli/Continuity tool**: template (reuses shared
   viz with a simple two-point taper, elevation h1/h2 numeric inputs shown
   as flat-pipe side labels, live Bernoulli term readout table, continuity
-  solve-for-unknowns form with exactly-one-blank validation, own theory
-  panel). `initBernoulliTool` wires physics + shared viz + solver.
+  solver, own theory panel). `initBernoulliTool` wires physics + shared
+  viz + solver. The "exactly-one-blank" rule is enforced by a radio group
+  (pick which of D1/V1/D2/V2 to solve for; its input is disabled and
+  computed live) rather than by validating literal blank fields.
 - `[ ]` **Phase 5 — Polish**: correct teardown on rapid tool switching (no
   leaked rAF loops), responsive layout at narrow widths, dark-mode
   canvas/particle contrast check, initial-hash-on-load deep linking.

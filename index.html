@@ -286,6 +286,65 @@
   .stat-velocity { font-size: 15px; margin-top: 6px; color: var(--accent); }
   .stat-pressure { font-size: 13px; margin-top: 2px; color: var(--accent-2); }
 
+  .viz-panel { position: relative; }
+
+  .field-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  .field-inline input[type="radio"] { accent-color: var(--accent); }
+
+  input[type="number"]:disabled {
+    color: var(--accent);
+    font-family: 'IBM Plex Mono', monospace;
+    border-color: var(--accent);
+  }
+
+  .elevation-label {
+    position: absolute;
+    top: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--card-bg);
+    padding: 2px 6px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    z-index: 1;
+  }
+
+  .elevation-label.left { left: 14px; }
+  .elevation-label.right { right: 14px; }
+
+  .bernoulli-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    overflow: hidden;
+    background: var(--card-bg);
+  }
+
+  .bernoulli-table th, .bernoulli-table td {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .bernoulli-table th {
+    color: var(--muted);
+    font-weight: 500;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .bernoulli-table tbody tr:last-child td { border-bottom: none; }
+
   @media (max-width: 720px) {
     .tool-layout { flex-direction: column; }
     .tool-sidebar { width: 100%; }
@@ -399,8 +458,91 @@
 
 <template id="tpl-bernoulli">
   <div>
-    <h2>Bernoulli / Continuity</h2>
-    <p style="color: var(--muted);">Placeholder — built in Phase 4.</p>
+    <h2 class="tool-title">Bernoulli / Continuity</h2>
+    <p class="tool-subtitle">Pick one quantity to solve for; the other three drive it via continuity. Elevation change feeds Bernoulli's equation independently of speed.</p>
+
+    <div class="tool-layout">
+      <div class="tool-sidebar">
+        <div class="field">
+          <div class="field-row"><span>Solve for</span></div>
+          <label class="field-inline"><input type="radio" name="solve-target" data-role="solve-d1" value="d1"> D&#8321; (inlet diameter)</label>
+          <label class="field-inline"><input type="radio" name="solve-target" data-role="solve-v1" value="v1"> V&#8321; (inlet velocity)</label>
+          <label class="field-inline"><input type="radio" name="solve-target" data-role="solve-d2" value="d2"> D&#8322; (outlet diameter)</label>
+          <label class="field-inline"><input type="radio" name="solve-target" data-role="solve-v2" value="v2" checked> V&#8322; (outlet velocity)</label>
+        </div>
+
+        <div class="field">
+          <div class="field-row"><span>D&#8321; (mm)</span></div>
+          <input type="number" data-role="d1-input" min="1" step="1" value="40">
+        </div>
+        <div class="field">
+          <div class="field-row"><span>V&#8321; (m/s)</span></div>
+          <input type="number" data-role="v1-input" min="0" step="0.1" value="2.4">
+        </div>
+        <div class="field">
+          <div class="field-row"><span>D&#8322; (mm)</span></div>
+          <input type="number" data-role="d2-input" min="1" step="1" value="25">
+        </div>
+        <div class="field">
+          <div class="field-row"><span>V&#8322; (m/s)</span></div>
+          <input type="number" data-role="v2-input" min="0" step="0.1" value="0" disabled>
+        </div>
+
+        <div class="field">
+          <div class="field-row"><span>Elevation h&#8321; (m)</span></div>
+          <input type="number" data-role="h1-input" step="0.1" value="0">
+        </div>
+        <div class="field">
+          <div class="field-row"><span>Elevation h&#8322; (m)</span></div>
+          <input type="number" data-role="h2-input" step="0.1" value="0">
+        </div>
+
+        <div class="field">
+          <div class="field-row"><span>Fluid</span></div>
+          <select data-role="fluid-select">
+            <option value="water">Water</option>
+            <option value="air">Air</option>
+            <option value="oil">Oil</option>
+            <option value="custom">Custom&hellip;</option>
+          </select>
+        </div>
+
+        <div class="field" data-role="custom-density-wrap" hidden>
+          <div class="field-row"><span>Density</span><span class="mono field-value" data-role="custom-density-value"></span></div>
+          <input type="number" data-role="custom-density-input" min="0.1" step="1" value="1000">
+        </div>
+
+        <details class="theory-panel">
+          <summary>How it works</summary>
+          <p class="mono eq">Continuity:&nbsp; A&#8321;V&#8321; = A&#8322;V&#8322;</p>
+          <p class="mono eq">Bernoulli:&nbsp; P&#8321; + &#189;&rho;V&#8321;&sup2; + &rho;gh&#8321; = P&#8322; + &#189;&rho;V&#8322;&sup2; + &rho;gh&#8322;</p>
+          <p class="theory-text">Pick which quantity to solve for above, then edit the other three &mdash; continuity fills the last one in automatically. Elevation (h) shifts the pressure balance independently of speed: raising the outlet (h&#8322;) trades away some of the pressure recovery a change in pipe size would otherwise give back.</p>
+        </details>
+      </div>
+
+      <div class="tool-main">
+        <div class="viz-panel">
+          <span class="elevation-label left" data-role="h1-label"></span>
+          <span class="elevation-label right" data-role="h2-label"></span>
+          <canvas data-role="canvas" style="width:100%; height:180px; display:block;"></canvas>
+        </div>
+
+        <table class="bernoulli-table">
+          <thead>
+            <tr><th>Station</th><th>Velocity</th><th>Dynamic &frac12;&rho;V&sup2;</th><th>Hydrostatic &rho;gh</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>1 (inlet)</td><td class="mono" data-role="v1-out"></td><td class="mono" data-role="dyn1-out"></td><td class="mono" data-role="hydro1-out"></td></tr>
+            <tr><td>2 (outlet)</td><td class="mono" data-role="v2-out"></td><td class="mono" data-role="dyn2-out"></td><td class="mono" data-role="hydro2-out"></td></tr>
+          </tbody>
+        </table>
+
+        <div class="stat-card">
+          <div class="stat-label">Implied &Delta;P (P&#8321; &minus; P&#8322;)</div>
+          <div class="mono stat-velocity" data-role="delta-p-out"></div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -847,9 +989,182 @@
     };
   }
 
+  function diameterFromArea(a) {
+    return 2 * Math.sqrt(a / Math.PI) * 1000; // m^2 -> mm
+  }
+
+  function bernoulliNormRadius(dMm) {
+    var t = clamp(dMm / 60, 0, 1);
+    return 0.12 + t * 0.4;
+  }
+
   function initBernoulliTool(root) {
-    // Real implementation lands in Phase 4.
-    return { destroy: function () {} };
+    var el = {
+      radios: root.querySelectorAll('input[name="solve-target"]'),
+      d1Input: root.querySelector('[data-role="d1-input"]'),
+      v1Input: root.querySelector('[data-role="v1-input"]'),
+      d2Input: root.querySelector('[data-role="d2-input"]'),
+      v2Input: root.querySelector('[data-role="v2-input"]'),
+      h1Input: root.querySelector('[data-role="h1-input"]'),
+      h2Input: root.querySelector('[data-role="h2-input"]'),
+      fluidSelect: root.querySelector('[data-role="fluid-select"]'),
+      customDensityWrap: root.querySelector('[data-role="custom-density-wrap"]'),
+      customDensityInput: root.querySelector('[data-role="custom-density-input"]'),
+      customDensityValue: root.querySelector('[data-role="custom-density-value"]'),
+      canvas: root.querySelector('[data-role="canvas"]'),
+      h1Label: root.querySelector('[data-role="h1-label"]'),
+      h2Label: root.querySelector('[data-role="h2-label"]'),
+      v1Out: root.querySelector('[data-role="v1-out"]'),
+      v2Out: root.querySelector('[data-role="v2-out"]'),
+      dyn1Out: root.querySelector('[data-role="dyn1-out"]'),
+      dyn2Out: root.querySelector('[data-role="dyn2-out"]'),
+      hydro1Out: root.querySelector('[data-role="hydro1-out"]'),
+      hydro2Out: root.querySelector('[data-role="hydro2-out"]'),
+      deltaPOut: root.querySelector('[data-role="delta-p-out"]')
+    };
+
+    var state = {
+      d1: parseFloat(el.d1Input.value),
+      v1: parseFloat(el.v1Input.value),
+      d2: parseFloat(el.d2Input.value),
+      v2: parseFloat(el.v2Input.value),
+      h1: parseFloat(el.h1Input.value),
+      h2: parseFloat(el.h2Input.value),
+      fluidKey: 'water',
+      customDensity: parseFloat(el.customDensityInput.value),
+      solveTarget: 'v2'
+    };
+
+    function currentDensity() {
+      if (state.fluidKey === 'custom') return state.customDensity;
+      return FLUID_PRESETS[state.fluidKey].density;
+    }
+
+    function applyDisabledStates() {
+      el.d1Input.disabled = state.solveTarget === 'd1';
+      el.v1Input.disabled = state.solveTarget === 'v1';
+      el.d2Input.disabled = state.solveTarget === 'd2';
+      el.v2Input.disabled = state.solveTarget === 'v2';
+    }
+
+    function readEditableInputs() {
+      if (state.solveTarget !== 'd1') state.d1 = parseFloat(el.d1Input.value) || 0;
+      if (state.solveTarget !== 'v1') state.v1 = parseFloat(el.v1Input.value) || 0;
+      if (state.solveTarget !== 'd2') state.d2 = parseFloat(el.d2Input.value) || 0;
+      if (state.solveTarget !== 'v2') state.v2 = parseFloat(el.v2Input.value) || 0;
+      state.h1 = parseFloat(el.h1Input.value) || 0;
+      state.h2 = parseFloat(el.h2Input.value) || 0;
+    }
+
+    function solve() {
+      var fields = {
+        A1: state.solveTarget === 'd1' ? null : Physics.areaFromDiameter(state.d1 / 1000),
+        V1: state.solveTarget === 'v1' ? null : state.v1,
+        A2: state.solveTarget === 'd2' ? null : Physics.areaFromDiameter(state.d2 / 1000),
+        V2: state.solveTarget === 'v2' ? null : state.v2
+      };
+      var result = Physics.solveContinuity(fields);
+      if (!result) return;
+
+      var target = state.solveTarget;
+      var value;
+      if (target === 'd1') value = diameterFromArea(result.A1);
+      else if (target === 'd2') value = diameterFromArea(result.A2);
+      else if (target === 'v1') value = result.V1;
+      else value = result.V2;
+
+      if (isFinite(value) && value >= 0) state[target] = value;
+    }
+
+    function updateSolvedInputValue() {
+      if (state.solveTarget === 'd1') el.d1Input.value = state.d1.toFixed(1);
+      else if (state.solveTarget === 'd2') el.d2Input.value = state.d2.toFixed(1);
+      else if (state.solveTarget === 'v1') el.v1Input.value = state.v1.toFixed(2);
+      else el.v2Input.value = state.v2.toFixed(2);
+    }
+
+    function updateElevationLabels() {
+      el.h1Label.textContent = 'h₁ = ' + state.h1.toFixed(1) + ' m';
+      el.h2Label.textContent = 'h₂ = ' + state.h2.toFixed(1) + ' m';
+    }
+
+    function updateDensityLabel() {
+      el.customDensityValue.textContent = state.customDensity.toFixed(0) + ' kg/m³';
+    }
+
+    function updateBernoulliTable() {
+      var rho = currentDensity();
+      var t1 = Physics.bernoulliTerms(rho, state.v1, state.h1);
+      var t2 = Physics.bernoulliTerms(rho, state.v2, state.h2);
+      el.v1Out.textContent = state.v1.toFixed(2) + ' m/s';
+      el.v2Out.textContent = state.v2.toFixed(2) + ' m/s';
+      el.dyn1Out.textContent = (t1.dynamic / 1000).toFixed(2) + ' kPa';
+      el.dyn2Out.textContent = (t2.dynamic / 1000).toFixed(2) + ' kPa';
+      el.hydro1Out.textContent = (t1.hydrostatic / 1000).toFixed(2) + ' kPa';
+      el.hydro2Out.textContent = (t2.hydrostatic / 1000).toFixed(2) + ' kPa';
+      var deltaP = (t2.dynamic + t2.hydrostatic) - (t1.dynamic + t1.hydrostatic);
+      el.deltaPOut.textContent = (deltaP / 1000).toFixed(2) + ' kPa';
+    }
+
+    function updateAll() {
+      readEditableInputs();
+      solve();
+      updateSolvedInputValue();
+      updateElevationLabels();
+      updateDensityLabel();
+      updateBernoulliTable();
+    }
+
+    function getProfile() {
+      return {
+        radiusFn: function (x) {
+          return PipeGeometry.smoothTaper(x, 0, 1, bernoulliNormRadius(state.d1), bernoulliNormRadius(state.d2));
+        }
+      };
+    }
+
+    var viz = createPipeFlowViz(el.canvas, {
+      getProfile: getProfile,
+      getInletVelocity: function () { return state.v1; },
+      particleCount: 16
+    });
+    viz.start();
+
+    function onResize() { viz.resize(); }
+    window.addEventListener('resize', onResize);
+
+    for (var i = 0; i < el.radios.length; i++) {
+      el.radios[i].addEventListener('change', function (e) {
+        state.solveTarget = e.target.value;
+        applyDisabledStates();
+        updateAll();
+      });
+    }
+
+    [el.d1Input, el.v1Input, el.d2Input, el.v2Input, el.h1Input, el.h2Input].forEach(function (input) {
+      input.addEventListener('input', updateAll);
+    });
+
+    el.fluidSelect.addEventListener('change', function () {
+      state.fluidKey = el.fluidSelect.value;
+      el.customDensityWrap.hidden = state.fluidKey !== 'custom';
+      updateAll();
+    });
+
+    el.customDensityInput.addEventListener('input', function () {
+      state.customDensity = parseFloat(el.customDensityInput.value) || 0;
+      updateAll();
+    });
+
+    applyDisabledStates();
+    updateAll();
+
+    return {
+      destroy: function () {
+        viz.stop();
+        window.removeEventListener('resize', onResize);
+      }
+    };
   }
 
   // ---- Home grid renderer -------------------------------------------------
