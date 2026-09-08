@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fluid Dynamics Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fafbfc;
+    --fg: #1a2027;
+    --muted: #5b6670;
+    --card-bg: #ffffff;
+    --border: #d7dee5;
+    --accent: #3b9aa8;
+    --accent-2: #b5791f;
+    --grid-line: #eef1f4;
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #14181c;
+    --fg: #e7ecf0;
+    --muted: #8a97a1;
+    --card-bg: #1b2126;
+    --border: #2b333a;
+    --accent: #3b9aa8;
+    --accent-2: #b5791f;
+    --grid-line: #1d2328;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'IBM Plex Sans', sans-serif;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  a { color: var(--accent); }
+  a:hover { color: var(--accent-2); }
+
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+
+  .shell-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 40px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .shell-header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+
+  .shell-nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .btn {
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--fg);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 14px;
+    cursor: pointer;
+  }
+
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .icon-btn {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .icon-btn svg { stroke: var(--fg); }
+
+  main.view { max-width: 1100px; margin: 0 auto; padding: 32px 40px 60px; }
+
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .tool-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 18px;
+  }
+
+  .tool-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--card-bg);
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+  }
+
+  .tool-card:hover { border-color: var(--accent); }
+
+  .tool-card .card-icon svg { stroke: var(--accent); }
+
+  .tool-card .card-title {
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .tool-card .card-desc {
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  .tool-card.placeholder {
+    align-items: center;
+    justify-content: center;
+    border-style: dashed;
+    color: var(--muted);
+    cursor: default;
+  }
+
+  .tool-card.placeholder:hover { border-color: var(--border); }
+
+  #back-btn { margin-bottom: 20px; }
+
+  .tool-layout {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+  }
+
+  .tool-sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--card-bg);
+  }
+
+  .tool-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .viz-panel {
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--card-bg);
+  }
+
+  .theory-panel {
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--card-bg);
+    padding: 14px 16px;
+  }
+
+  .theory-panel summary {
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    list-style: none;
+  }
+
+  .theory-panel summary::-webkit-details-marker { display: none; }
+
+  @media (max-width: 720px) {
+    .tool-layout { flex-direction: column; }
+    .tool-sidebar { width: 100%; }
+    main.view { padding: 24px 20px 48px; }
+    .shell-header { padding: 16px 20px; }
+  }
+
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<header class="shell-header">
+  <h1>Fluid Dynamics Lab</h1>
+  <nav class="shell-nav">
+    <button class="btn" id="home-btn" type="button">Home</button>
+    <button class="btn icon-btn" id="theme-toggle" type="button" aria-label="Toggle theme">
+      <svg id="theme-icon-dark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" hidden>
+        <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/>
+      </svg>
+      <svg id="theme-icon-light" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" hidden>
+        <circle cx="12" cy="12" r="4.5"/>
+        <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>
+      </svg>
+    </button>
+  </nav>
+</header>
+
+<main id="home-view" class="view">
+  <div class="section-label">Tool library</div>
+  <div id="tool-grid" class="tool-grid"></div>
+</main>
+
+<main id="tool-view" class="view" hidden>
+  <button class="btn" id="back-btn" type="button">&larr; Back to all tools</button>
+  <div id="tool-mount"></div>
+</main>
+
+<!-- Per-tool templates. Each is inert markup until cloned into #tool-mount. -->
+
+<template id="tpl-venturi">
+  <div>
+    <h2>Venturi Tube</h2>
+    <p style="color: var(--muted);">Placeholder — built in Phase 3.</p>
+  </div>
+</template>
+
+<template id="tpl-bernoulli">
+  <div>
+    <h2>Bernoulli / Continuity</h2>
+    <p style="color: var(--muted);">Placeholder — built in Phase 4.</p>
+  </div>
+</template>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---- Theme module ----------------------------------------------------
+
+  var THEME_KEY = 'fdl-theme';
+
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem(THEME_KEY, theme);
+    document.getElementById('theme-icon-dark').hidden = theme !== 'dark';
+    document.getElementById('theme-icon-light').hidden = theme === 'dark';
+  }
+
+  function initialTheme() {
+    var stored = localStorage.getItem(THEME_KEY);
+    if (stored === 'light' || stored === 'dark') return stored;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light';
+  }
+
+  document.getElementById('theme-toggle').addEventListener('click', function () {
+    var current = document.documentElement.getAttribute('data-theme');
+    applyTheme(current === 'dark' ? 'light' : 'dark');
+  });
+
+  // ---- Tool registry -----------------------------------------------------
+  // Adding a future tool: write its <template>, write its init function,
+  // push one entry here. Nothing else in the shell changes.
+
+  var TOOL_REGISTRY = [
+    {
+      id: 'venturi-tube',
+      title: 'Venturi Tube',
+      description: 'Convergent & divergent flow, animated particles, live velocity/pressure.',
+      templateId: 'tpl-venturi',
+      init: initVenturiTool
+    },
+    {
+      id: 'bernoulli-continuity',
+      title: 'Bernoulli / Continuity',
+      description: 'Elevation-aware Bernoulli readouts and a continuity solver.',
+      templateId: 'tpl-bernoulli',
+      init: initBernoulliTool
+    }
+  ];
+
+  function initVenturiTool(root) {
+    // Real implementation lands in Phase 3.
+    return { destroy: function () {} };
+  }
+
+  function initBernoulliTool(root) {
+    // Real implementation lands in Phase 4.
+    return { destroy: function () {} };
+  }
+
+  // ---- Home grid renderer -------------------------------------------------
+
+  function renderGrid() {
+    var grid = document.getElementById('tool-grid');
+    grid.innerHTML = '';
+    TOOL_REGISTRY.forEach(function (tool) {
+      var card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'tool-card';
+      card.dataset.toolId = tool.id;
+      card.innerHTML =
+        '<div class="card-title">' + tool.title + '</div>' +
+        '<div class="card-desc">' + tool.description + '</div>';
+      card.addEventListener('click', function () {
+        location.hash = tool.id;
+      });
+      grid.appendChild(card);
+    });
+
+    var placeholder = document.createElement('div');
+    placeholder.className = 'tool-card placeholder';
+    placeholder.innerHTML = '<div class="card-desc">More tools coming soon</div>';
+    grid.appendChild(placeholder);
+  }
+
+  // ---- Router --------------------------------------------------------------
+
+  var homeView = document.getElementById('home-view');
+  var toolView = document.getElementById('tool-view');
+  var toolMount = document.getElementById('tool-mount');
+  var activeTool = null; // { destroy() } handle for the currently mounted tool
+
+  function showHome() {
+    if (activeTool) {
+      activeTool.destroy();
+      activeTool = null;
+      toolMount.innerHTML = '';
+    }
+    toolView.hidden = true;
+    homeView.hidden = false;
+  }
+
+  function showTool(entry) {
+    if (activeTool) {
+      activeTool.destroy();
+      activeTool = null;
+      toolMount.innerHTML = '';
+    }
+    homeView.hidden = true;
+    toolView.hidden = false;
+
+    var template = document.getElementById(entry.templateId);
+    var fragment = template.content.cloneNode(true);
+    toolMount.appendChild(fragment);
+    activeTool = entry.init(toolMount);
+  }
+
+  function navigate() {
+    var hash = location.hash.replace('#', '');
+    var entry = TOOL_REGISTRY.filter(function (t) { return t.id === hash; })[0];
+    if (!entry) {
+      showHome();
+      return;
+    }
+    showTool(entry);
+  }
+
+  window.addEventListener('hashchange', navigate);
+
+  document.getElementById('home-btn').addEventListener('click', function () {
+    location.hash = '';
+  });
+  document.getElementById('back-btn').addEventListener('click', function () {
+    location.hash = '';
+  });
+
+  // ---- Bootstrap -------------------------------------------------------
+
+  applyTheme(initialTheme());
+  renderGrid();
+  navigate();
+})();
+</script>
+
+</body>
+</html>

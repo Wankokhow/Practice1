@@ -71,11 +71,10 @@ full spec.
   (artboard "A — Technical Lab")
 
 ### Phases
-- `[ ]` **Phase 1 — Shell & routing**: header (title, Home button, theme
+- `[x]` **Phase 1 — Shell & routing**: header (title, Home button, theme
   toggle), home/tool view containers, empty `<template>` stubs, tool
   registry + hash router + grid renderer, theme toggle via CSS vars +
-  localStorage. Proven with 2 placeholder empty templates before any real
-  tool exists.
+  localStorage. Proven with 2 placeholder templates.
 - `[ ]` **Phase 2 — Shared physics + pipe-flow viz**: physics module (pure
   functions, no DOM); `createPipeFlowViz(canvas, options)` factory
   (smoothstep-tapered `radiusFn`, particles advancing by
