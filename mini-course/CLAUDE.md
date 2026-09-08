@@ -5,14 +5,14 @@ subfolder. This file is scoped to `mini-course/` only — it does not modify
 or replace the repo-root `CLAUDE.md`, which documents a separate, unrelated
 project.
 
-> **Status: draft, pending slides.** The user has not yet shared the
-> source slide images. Everything below is a placeholder skeleton based on
-> the general brief ("turn 3-5 slides into a mini-course teaching site,
-> lesson-style, with navigation between sections, one-time build — not a
-> visitor-upload feature"). Do not start implementing from this file alone;
-> revisit both sections once slides are shared and the remaining interview
-> questions (topic, audience level, tone, whether quizzes/exercises are
-> wanted, navigation style — sidebar vs. prev/next) are answered.
+> **Status: building.** No slides were available; the user asked instead
+> for a mini-course authored from publicly available knowledge on a topic
+> Claude picks. Topic: **Big-O Notation & Algorithm Complexity** — a
+> well-documented CS fundamentals topic, good fit for the "some prior
+> background" audience level the user specified. 4 lessons, each ending
+> in a short self-check quiz, sections switched via JavaScript (no
+> separate pages), in the "Modern Minimal" visual direction already
+> chosen below.
 
 ## Stack & Conventions
 
@@ -76,31 +76,43 @@ project.
 Status legend: `[ ]` not started, `[x]` done.
 
 ### Data model
-- `LESSONS`: ordered array of `{ id, navLabel, title, bodyHtml }`, one
-  entry per slide — populated once slides are shared and their content is
-  written up as lesson prose.
-- No other persisted state expected (no backend, no localStorage need
-  identified yet — add if a "resume where you left off" requirement
-  emerges from the interview).
+- `LESSONS`: ordered array of
+  `{ id, navLabel, title, kicker, body: [{heading?, paragraphs?, code?, list?}], quiz: [{question, options, correctIndex, explanation}] }`.
+  4 entries, one per lesson (see Phases). `body` is a small block list
+  (not a raw HTML blob) so paragraphs/code/lists render with consistent
+  markup.
+- Runtime state (in-memory JS, not persisted): `currentIndex` into
+  `LESSONS`; per-lesson quiz state (`selectedOptionIndex`,
+  `submitted`) held in a plain object keyed by lesson id, reset only on
+  page reload — no localStorage (nothing here needs to survive a
+  refresh for a one-time course site).
 
 ### Key flows
-- **Navigation**: nav control (sidebar list or prev/next buttons — TBD)
-  → show the matching `LESSONS` entry, hide the rest → update active-nav
-  highlighting.
-- **Content authoring**: each slide image is read once, its content
-  rewritten into a `bodyHtml` lesson section (not a screenshot, not a
-  bullet dump) and added to `LESSONS` in slide order.
+- **Navigation**: sidebar list (numbered step + label) and
+  Prev/Next buttons at the bottom of the lesson pane both call one
+  `goToLesson(index)` → updates `currentIndex`, re-renders the lesson
+  pane and the sidebar's active/upcoming states, updates the top
+  progress-dot strip. All via JS show/hide — no separate pages, no
+  hash routing needed for a fixed 4-lesson course.
+- **Quiz interaction**: selecting an option stores it in that lesson's
+  quiz state; "Check answer" reveals correct/incorrect styling per
+  option plus a one-line explanation; re-selecting before checking is
+  allowed, changing the answer after checking resets to unchecked.
 
 ### Phases
-- `[ ]` **Phase 0 — Intake**: receive the slide images, finish the
-  requirements interview (topic, audience, tone, nav style, whether
-  exercises/quizzes are wanted, how many lessons exactly). Fill in the
-  real data model and phase list below based on the answers — this
-  skeleton gets replaced, not just appended to.
-- `[ ]` **Phase 1 — Shell & navigation**: page scaffold, `LESSONS`
-  registry (stub content), nav UI, section switching wired up and proven
-  with placeholder text before real content goes in.
-- `[ ]` **Phase 2 — Lesson content**: write up each slide's content as a
-  lesson section, in order.
-- `[ ]` **Phase 3 — Polish**: responsive check, visual pass, verify
-  navigation and deep-linking (if used) all work end to end.
+- `[x]` **Phase 0 — Intake**: no slides available; topic, audience, and
+  scope decided per the user's answers above.
+- `[x]` **Phase 1 — Shell & navigation**: `index.html` built in the
+  chosen Direction B look, `LESSONS` registry with all 4 lessons' real
+  content, sidebar + progress dots + Prev/Next wired to `goToLesson`.
+  Verified with Playwright: click-through of all 4 lessons, no page
+  reload, Prev/Next disable correctly at the first/last lesson.
+- `[x]` **Phase 2 — Quizzes**: quiz rendering + check/feedback logic
+  for all 4 lessons' question sets, verified interactively (select →
+  check → correct/incorrect styling + explanation).
+- `[x]` **Phase 3 — Polish**: verified at 375px width (sidebar
+  collapses to a horizontal scrollable step strip, no horizontal
+  overflow) and at 1280px desktop. Google Fonts failed to load in the
+  sandboxed test environment (network policy), confirmed the
+  system-ui/sans-serif/monospace fallback stacks render cleanly either
+  way — not expected to recur in a normal browser.

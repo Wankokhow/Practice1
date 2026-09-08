@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Big-O Notation &amp; Algorithm Complexity — Mini-Course</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap">
+<style>
+  :root {
+    --bg: #fbfbfc;
+    --fg: #1c1f26;
+    --muted: #5b6070;
+    --muted-2: #8b909c;
+    --border: #e5e7ec;
+    --accent: #3454d1;
+    --accent-hover: #26399c;
+    --active-tint: #eef0fb;
+    --card: #ffffff;
+    --good: #1f8a5a;
+    --good-bg: #e9f7f0;
+    --bad: #c2412c;
+    --bad-bg: #fbebe8;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'Work Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3 {
+    font-family: 'Space Grotesk', sans-serif;
+    margin: 0;
+  }
+
+  code, .mono {
+    font-family: 'Space Mono', monospace;
+  }
+
+  a { color: var(--accent); }
+  a:hover { color: var(--accent-hover); }
+
+  button {
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  .app-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  header.top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 40px;
+    border-bottom: 1px solid var(--border);
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 18px;
+  }
+
+  .progress-dots {
+    display: flex;
+    gap: 8px;
+  }
+
+  .progress-dots .dot {
+    width: 34px;
+    height: 8px;
+    border-radius: 5px;
+    background: var(--border);
+    transition: background 0.15s ease;
+  }
+
+  .progress-dots .dot.filled {
+    background: var(--accent);
+  }
+
+  .layout {
+    display: flex;
+    flex-grow: 1;
+    min-height: 0;
+  }
+
+  nav.sidebar {
+    display: flex;
+    flex-direction: column;
+    width: 250px;
+    flex-shrink: 0;
+    padding: 24px 20px;
+    gap: 4px;
+    border-right: 1px solid var(--border);
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    text-align: left;
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  .nav-item .step-badge {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 1.5px solid #c7cbd4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted-2);
+  }
+
+  .nav-item.active {
+    background: var(--active-tint);
+  }
+
+  .nav-item.active .step-badge {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .nav-item.active span.nav-label {
+    color: var(--fg);
+    font-weight: 500;
+  }
+
+  .nav-item.done .step-badge {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  main.lesson-pane {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    padding: 48px 64px;
+    gap: 24px;
+    max-width: 760px;
+  }
+
+  .kicker {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+  }
+
+  .lesson-title {
+    font-size: 30px;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+  }
+
+  .lesson-body p {
+    margin: 0 0 16px 0;
+    font-size: 16px;
+    line-height: 1.75;
+    color: #3b3f4a;
+  }
+
+  .lesson-body h3 {
+    font-size: 17px;
+    font-weight: 600;
+    margin: 24px 0 10px 0;
+  }
+
+  .lesson-body ul {
+    margin: 0 0 16px 0;
+    padding-left: 20px;
+  }
+
+  .lesson-body li {
+    font-size: 16px;
+    line-height: 1.75;
+    color: #3b3f4a;
+    margin-bottom: 6px;
+  }
+
+  .code-block {
+    background: #f4f5f8;
+    border-radius: 10px;
+    padding: 16px 20px;
+    font-family: 'Space Mono', monospace;
+    font-size: 13.5px;
+    line-height: 1.7;
+    color: #1c1f26;
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .example-box {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 18px 20px;
+    background: #f4f5f8;
+    border-radius: 10px;
+  }
+
+  .example-box .label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted-2);
+    letter-spacing: 0.06em;
+  }
+
+  .example-box p {
+    margin: 0;
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: var(--fg);
+  }
+
+  .quiz {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 22px 24px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-top: 8px;
+  }
+
+  .quiz .quiz-heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+  }
+
+  .quiz-question {
+    font-size: 15px;
+    font-weight: 500;
+    margin-bottom: 2px;
+  }
+
+  .quiz-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .quiz-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #fff;
+    font-size: 14.5px;
+    color: var(--fg);
+    text-align: left;
+  }
+
+  .quiz-option:hover:not(:disabled) {
+    border-color: var(--accent);
+  }
+
+  .quiz-option.selected {
+    border-color: var(--accent);
+    background: var(--active-tint);
+  }
+
+  .quiz-option.correct {
+    border-color: var(--good);
+    background: var(--good-bg);
+    color: var(--good);
+  }
+
+  .quiz-option.incorrect {
+    border-color: var(--bad);
+    background: var(--bad-bg);
+    color: var(--bad);
+  }
+
+  .quiz-option:disabled {
+    cursor: default;
+  }
+
+  .quiz-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 9px 18px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: var(--accent-hover);
+  }
+
+  .btn-primary:disabled {
+    background: #c7cbd4;
+    cursor: not-allowed;
+  }
+
+  .btn-ghost {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--muted);
+  }
+
+  .quiz-feedback {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .quiz-feedback.good { color: var(--good); }
+  .quiz-feedback.bad { color: var(--bad); }
+
+  .lesson-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: auto;
+    padding-top: 18px;
+  }
+
+  .lesson-nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    background: transparent;
+    border: none;
+    padding: 0;
+  }
+
+  .lesson-nav-btn.prev {
+    color: var(--muted-2);
+  }
+
+  .lesson-nav-btn.next {
+    color: #fff;
+    background: var(--accent);
+    padding: 9px 18px;
+    border-radius: 8px;
+  }
+
+  .lesson-nav-btn.next:hover { background: var(--accent-hover); }
+
+  .lesson-nav-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Mobile: sidebar collapses to a horizontal, scrollable step strip above content */
+  @media (max-width: 720px) {
+    header.top-bar {
+      padding: 16px 20px;
+    }
+
+    .layout {
+      flex-direction: column;
+    }
+
+    nav.sidebar {
+      flex-direction: row;
+      width: auto;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+      padding: 14px 16px;
+      gap: 8px;
+    }
+
+    .nav-item {
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    main.lesson-pane {
+      padding: 32px 20px;
+      max-width: none;
+    }
+
+    .lesson-title {
+      font-size: 24px;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="top-bar">
+    <span class="brand">Big-O Notation &amp; Algorithm Complexity</span>
+    <div class="progress-dots" id="progress-dots"></div>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar" id="sidebar" aria-label="Lessons"></nav>
+    <main class="lesson-pane" id="lesson-pane"></main>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var LESSONS = [
+    {
+      id: "what-is-big-o",
+      navLabel: "What Is Big-O?",
+      title: "What Is Big-O Notation?",
+      kicker: "LESSON 1",
+      body: [
+        { paragraphs: [
+          "When you write code that works, the next question is usually: does it still work when the input gets big? Big-O notation is the standard way programmers describe how the running time (or memory use) of an algorithm grows as the size of its input, usually called <code class=\"mono\">n</code>, grows.",
+          "It doesn't measure exact seconds or bytes &mdash; those depend on the machine, the language, and a hundred other details. Instead, Big-O describes the <em>shape</em> of the growth curve: does doubling the input double the work? Square it? Barely change it at all?"
+        ]},
+        { heading: "Why bother with an approximation?", paragraphs: [
+          "Because it lets you compare algorithms without running them. Two algorithms that solve the same problem can behave identically on a 10-item list and completely differently on a 10-million-item list. Big-O is what tells you which one will still be usable at scale, before you ever hit that scale."
+        ]},
+        { heading: "A concrete comparison", paragraphs: [
+          "Say you need to check whether a value exists in a collection of <code class=\"mono\">n</code> items.",
+          "Searching an unsorted array means checking items one by one in the worst case &mdash; the work grows in direct proportion to <code class=\"mono\">n</code>. Looking the same value up in a hash map takes roughly the same small amount of work no matter how large the collection is. Big-O gives these two behaviors names: <code class=\"mono\">O(n)</code> for the first, <code class=\"mono\">O(1)</code> for the second."
+        ]},
+        { list: [
+          "Big-O describes <strong>worst-case growth</strong>, not a stopwatch measurement.",
+          "It ignores constant factors and lower-order terms &mdash; <code class=\"mono\">O(2n)</code> and <code class=\"mono\">O(n + 5)</code> are both just written <code class=\"mono\">O(n)</code>.",
+          "It's a tool for comparing algorithms' scalability, not for predicting exact runtimes."
+        ]}
+      ],
+      quiz: [
+        {
+          question: "What does Big-O notation primarily describe?",
+          options: [
+            "The exact number of milliseconds an algorithm takes to run",
+            "How an algorithm's resource use grows as input size increases",
+            "How many lines of code an algorithm has",
+            "The programming language's overall performance"
+          ],
+          correctIndex: 1,
+          explanation: "Big-O describes the growth trend as input size (n) increases, not a literal timing measurement."
+        },
+        {
+          question: "Why does Big-O ignore constant factors like the difference between O(n) and O(2n)?",
+          options: [
+            "Constants are impossible to calculate",
+            "Because at large enough n, the growth shape (linear, in this case) matters far more than the constant multiplier",
+            "Because all algorithms have the same constants",
+            "Constants only apply to sorting algorithms"
+          ],
+          correctIndex: 1,
+          explanation: "Big-O is about the dominant growth trend at scale; constant multipliers don't change that trend, so they're dropped."
+        }
+      ]
+    },
+    {
+      id: "complexity-classes",
+      navLabel: "Complexity Classes",
+      title: "Common Complexity Classes",
+      kicker: "LESSON 2",
+      body: [
+        { paragraphs: [
+          "Most algorithms you'll encounter fall into a small handful of growth patterns. Learning to recognize them by sight &mdash; and by a few characteristic code shapes &mdash; is most of what \"thinking in Big-O\" means in practice."
+        ]},
+        { heading: "O(1) — Constant time", paragraphs: [
+          "The work doesn't depend on input size at all. Accessing an array element by index, or reading a value from a hash map, are classic examples."
+        ]},
+        { heading: "O(log n) — Logarithmic time", paragraphs: [
+          "The work grows very slowly because each step eliminates a large fraction of the remaining problem. Binary search is the textbook example: each comparison halves the space left to search."
+        ]},
+        { heading: "O(n) — Linear time", paragraphs: [
+          "The work grows in direct proportion to the input. Scanning every item in a list once &mdash; to sum it, print it, or search it without shortcuts &mdash; is O(n)."
+        ]},
+        { heading: "O(n log n) — Linearithmic time", paragraphs: [
+          "Common in efficient sorting algorithms (merge sort, heapsort, and typical implementations of quicksort). It behaves like doing O(log n) work, n times over."
+        ]},
+        { heading: "O(n²) — Quadratic time", paragraphs: [
+          "Typically comes from nested loops over the same input &mdash; comparing every item to every other item, as in a simple bubble sort or a naive duplicate check."
+        ]},
+        { code: "// O(1)\nfunction firstItem(arr) { return arr[0]; }\n\n// O(log n)\nfunction binarySearch(arr, target) { /* halves the range each step */ }\n\n// O(n)\nfunction sum(arr) {\n  let total = 0;\n  for (const x of arr) total += x;\n  return total;\n}\n\n// O(n^2)\nfunction hasDuplicate(arr) {\n  for (let i = 0; i < arr.length; i++)\n    for (let j = 0; j < arr.length; j++)\n      if (i !== j && arr[i] === arr[j]) return true;\n  return false;\n}" },
+        { paragraphs: [
+          "Ranked from fastest-growing to slowest-growing for large <code class=\"mono\">n</code>: <code class=\"mono\">O(1)</code> &lt; <code class=\"mono\">O(log n)</code> &lt; <code class=\"mono\">O(n)</code> &lt; <code class=\"mono\">O(n log n)</code> &lt; <code class=\"mono\">O(n&sup2;)</code> &lt; <code class=\"mono\">O(2&sup2;)</code>. The further right you are on that list, the more painful large inputs become."
+        ]}
+      ],
+      quiz: [
+        {
+          question: "Which complexity class does binary search on a sorted array belong to?",
+          options: ["O(1)", "O(log n)", "O(n)", "O(n²)"],
+          correctIndex: 1,
+          explanation: "Binary search halves the remaining search space on each comparison, which is the defining behavior of O(log n)."
+        },
+        {
+          question: "A function with two nested loops, each iterating over the full input, is typically:",
+          options: ["O(n)", "O(n log n)", "O(n²)", "O(1)"],
+          correctIndex: 2,
+          explanation: "Nested loops over the same input multiply their iteration counts together, giving O(n) * O(n) = O(n²)."
+        }
+      ]
+    },
+    {
+      id: "analyzing-code",
+      navLabel: "Analyzing Code",
+      title: "Analyzing Code for Time Complexity",
+      kicker: "LESSON 3",
+      body: [
+        { paragraphs: [
+          "In practice, you rarely derive Big-O from a formal proof &mdash; you read the code and reason about how the work scales. A few rules of thumb cover the vast majority of cases."
+        ]},
+        { heading: "Rule 1: A single loop over the input is O(n)", paragraphs: [
+          "If a loop runs once per element and does a constant amount of work each time, the whole loop is O(n)."
+        ]},
+        { heading: "Rule 2: Nested loops multiply", paragraphs: [
+          "A loop inside another loop, each running roughly n times, gives O(n) &times; O(n) = O(n&sup2;). Three nested loops over the same input give O(n&sup3;), and so on."
+        ]},
+        { heading: "Rule 3: Sequential (non-nested) steps add, then you keep the largest", paragraphs: [
+          "Code that does an O(n) pass followed by a separate O(n&sup2;) pass is O(n) + O(n&sup2;), which simplifies to just O(n&sup2;) &mdash; the slower-growing term is dropped because it becomes insignificant next to the faster-growing one."
+        ]},
+        { heading: "Rule 4: Halving the problem each step suggests O(log n)", paragraphs: [
+          "If a loop or recursive call divides the remaining work by a constant factor each time (like binary search cutting the array in half), that's the signature of logarithmic growth."
+        ]},
+        { code: "function example(arr) {\n  let total = 0;\n  for (const x of arr) {       // O(n)\n    total += x;\n  }\n\n  for (const x of arr) {       // another O(n) ...\n    for (const y of arr) {     // ... nested inside another O(n)\n      if (x === y) total++;    // => O(n^2) overall for this block\n    }\n  }\n\n  return total;                // Combined: O(n) + O(n^2) => O(n^2)\n}" },
+        { paragraphs: [
+          "Walking through a snippet like this line by line, labeling each loop's contribution, is usually enough to reach the right answer without any formal machinery."
+        ]}
+      ],
+      quiz: [
+        {
+          question: "A function does one O(n) loop, then a separate O(n²) nested loop afterward. What is its overall time complexity?",
+          options: ["O(n)", "O(n²)", "O(n³)", "O(2n²)"],
+          correctIndex: 1,
+          explanation: "Sequential steps add rather than multiply, and only the fastest-growing term survives simplification: O(n) + O(n²) = O(n²)."
+        },
+        {
+          question: "What's the strongest signal that a piece of code runs in O(log n)?",
+          options: [
+            "It uses a for loop",
+            "It processes every element exactly once",
+            "It repeatedly divides the remaining problem size by a constant factor",
+            "It calls another function"
+          ],
+          correctIndex: 2,
+          explanation: "Cutting the remaining work by a constant fraction each step (like binary search halving the array) is the defining pattern of logarithmic growth."
+        }
+      ]
+    },
+    {
+      id: "space-complexity",
+      navLabel: "Space & Trade-offs",
+      title: "Space Complexity & Time-Space Trade-offs",
+      kicker: "LESSON 4",
+      body: [
+        { paragraphs: [
+          "Big-O isn't only about time. <strong>Space complexity</strong> measures how much extra memory an algorithm needs, as a function of input size &mdash; and it uses the exact same notation."
+        ]},
+        { heading: "What counts as \"extra\" memory", paragraphs: [
+          "Space complexity usually refers to <em>auxiliary space</em>: memory the algorithm allocates beyond the input itself. A function that only uses a few variables regardless of input size is O(1) space. A function that builds a new array the same size as its input is O(n) space."
+        ]},
+        { heading: "The classic trade-off: memoization", paragraphs: [
+          "A naive recursive Fibonacci function recomputes the same values over and over, giving exponential time complexity but using very little memory. Adding a cache (memoization) that stores each computed value the first time it's needed cuts the time complexity dramatically &mdash; down to O(n) &mdash; at the cost of O(n) extra space to store the cache."
+        ]},
+        { code: "// Naive: O(2^n) time, O(n) space (call stack only)\nfunction fib(n) {\n  if (n <= 1) return n;\n  return fib(n - 1) + fib(n - 2);\n}\n\n// Memoized: O(n) time, O(n) space (call stack + cache)\nfunction fibMemo(n, cache = new Map()) {\n  if (n <= 1) return n;\n  if (cache.has(n)) return cache.get(n);\n  const result = fibMemo(n - 1, cache) + fibMemo(n - 2, cache);\n  cache.set(n, result);\n  return result;\n}" },
+        { paragraphs: [
+          "This is the essence of a time-space trade-off: spending more memory to avoid repeating work, or the reverse &mdash; recomputing values on the fly to avoid storing them. Neither choice is universally \"better\"; it depends on which resource, time or memory, is scarcer for your particular situation."
+        ]},
+        { list: [
+          "Space complexity uses the same <code class=\"mono\">O(...)</code> notation as time complexity, describing memory instead of steps.",
+          "Auxiliary space is extra memory used beyond the input; it's usually what \"space complexity\" refers to.",
+          "Trading space for time (caching, precomputed lookup tables, hash maps) is one of the most common optimization patterns in practice."
+        ]}
+      ],
+      quiz: [
+        {
+          question: "What does \"auxiliary space\" refer to?",
+          options: [
+            "The total size of the input data",
+            "Extra memory an algorithm uses beyond the input itself",
+            "The number of CPU cores available",
+            "The size of the compiled program"
+          ],
+          correctIndex: 1,
+          explanation: "Auxiliary space is the additional memory an algorithm allocates on top of the input it was given."
+        },
+        {
+          question: "Memoizing a recursive Fibonacci function improves its time complexity from exponential to linear. What does it cost?",
+          options: [
+            "Nothing, it's strictly better",
+            "It requires O(n) additional space to store cached results",
+            "It makes the code impossible to read",
+            "It only works for even values of n"
+          ],
+          correctIndex: 1,
+          explanation: "The cache that avoids recomputation has to be stored somewhere, which is exactly the time-space trade-off in action."
+        }
+      ]
+    }
+  ];
+
+  var quizState = {};
+  LESSONS.forEach(function (lesson) {
+    quizState[lesson.id] = lesson.quiz.map(function () {
+      return { selected: null, submitted: false };
+    });
+  });
+
+  var currentIndex = 0;
+
+  var sidebarEl = document.getElementById("sidebar");
+  var laneEl = document.getElementById("lesson-pane");
+  var dotsEl = document.getElementById("progress-dots");
+
+  function renderSidebar() {
+    sidebarEl.innerHTML = "";
+    LESSONS.forEach(function (lesson, i) {
+      var btn = document.createElement("button");
+      btn.className = "nav-item" + (i === currentIndex ? " active" : "") + (i < currentIndex ? " done" : "");
+      btn.setAttribute("type", "button");
+      btn.innerHTML =
+        '<span class="step-badge">' + (i + 1) + '</span>' +
+        '<span class="nav-label">' + lesson.navLabel + '</span>';
+      btn.addEventListener("click", function () { goToLesson(i); });
+      sidebarEl.appendChild(btn);
+    });
+  }
+
+  function renderDots() {
+    dotsEl.innerHTML = "";
+    LESSONS.forEach(function (_, i) {
+      var dot = document.createElement("div");
+      dot.className = "dot" + (i <= currentIndex ? " filled" : "");
+      dotsEl.appendChild(dot);
+    });
+  }
+
+  function renderBodyBlock(block) {
+    var html = "";
+    if (block.heading) {
+      html += "<h3>" + block.heading + "</h3>";
+    }
+    if (block.paragraphs) {
+      block.paragraphs.forEach(function (p) {
+        html += "<p>" + p + "</p>";
+      });
+    }
+    if (block.list) {
+      html += "<ul>" + block.list.map(function (li) { return "<li>" + li + "</li>"; }).join("") + "</ul>";
+    }
+    if (block.code) {
+      html += '<div class="code-block">' + escapeHtml(block.code) + "</div>";
+    }
+    return html;
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function renderQuiz(lesson) {
+    var state = quizState[lesson.id];
+    var wrap = document.createElement("div");
+    wrap.className = "quiz";
+
+    var heading = document.createElement("div");
+    heading.className = "quiz-heading";
+    heading.textContent = "Check your understanding";
+    wrap.appendChild(heading);
+
+    lesson.quiz.forEach(function (q, qi) {
+      var qState = state[qi];
+
+      var qWrap = document.createElement("div");
+      qWrap.className = "quiz-block";
+
+      var qText = document.createElement("div");
+      qText.className = "quiz-question";
+      qText.textContent = (qi + 1) + ". " + q.question;
+      qWrap.appendChild(qText);
+
+      var optsWrap = document.createElement("div");
+      optsWrap.className = "quiz-options";
+
+      q.options.forEach(function (opt, oi) {
+        var optBtn = document.createElement("button");
+        optBtn.type = "button";
+        optBtn.className = "quiz-option";
+        if (qState.selected === oi) optBtn.classList.add("selected");
+        if (qState.submitted) {
+          optBtn.disabled = true;
+          if (oi === q.correctIndex) optBtn.classList.add("correct");
+          else if (oi === qState.selected) optBtn.classList.add("incorrect");
+        }
+        optBtn.textContent = opt;
+        optBtn.addEventListener("click", function () {
+          qState.selected = oi;
+          qState.submitted = false;
+          renderLesson();
+        });
+        optsWrap.appendChild(optBtn);
+      });
+      qWrap.appendChild(optsWrap);
+
+      var actions = document.createElement("div");
+      actions.className = "quiz-actions";
+
+      var checkBtn = document.createElement("button");
+      checkBtn.type = "button";
+      checkBtn.className = "btn btn-primary";
+      checkBtn.textContent = qState.submitted ? "Checked" : "Check answer";
+      checkBtn.disabled = qState.selected === null || qState.submitted;
+      checkBtn.addEventListener("click", function () {
+        qState.submitted = true;
+        renderLesson();
+      });
+      actions.appendChild(checkBtn);
+      qWrap.appendChild(actions);
+
+      if (qState.submitted) {
+        var feedback = document.createElement("div");
+        var isCorrect = qState.selected === q.correctIndex;
+        feedback.className = "quiz-feedback " + (isCorrect ? "good" : "bad");
+        feedback.textContent = (isCorrect ? "Correct. " : "Not quite. ") + q.explanation;
+        qWrap.appendChild(feedback);
+      }
+
+      wrap.appendChild(qWrap);
+    });
+
+    return wrap;
+  }
+
+  function renderLesson() {
+    var lesson = LESSONS[currentIndex];
+    laneEl.innerHTML = "";
+
+    var kicker = document.createElement("div");
+    kicker.className = "kicker";
+    kicker.textContent = lesson.kicker;
+    laneEl.appendChild(kicker);
+
+    var title = document.createElement("h1");
+    title.className = "lesson-title";
+    title.textContent = lesson.title;
+    laneEl.appendChild(title);
+
+    var body = document.createElement("div");
+    body.className = "lesson-body";
+    body.innerHTML = lesson.body.map(renderBodyBlock).join("");
+    laneEl.appendChild(body);
+
+    laneEl.appendChild(renderQuiz(lesson));
+
+    var navWrap = document.createElement("div");
+    navWrap.className = "lesson-nav";
+
+    var prevBtn = document.createElement("button");
+    prevBtn.type = "button";
+    prevBtn.className = "lesson-nav-btn prev";
+    prevBtn.textContent = "← Previous";
+    prevBtn.disabled = currentIndex === 0;
+    prevBtn.addEventListener("click", function () { goToLesson(currentIndex - 1); });
+    navWrap.appendChild(prevBtn);
+
+    var nextBtn = document.createElement("button");
+    nextBtn.type = "button";
+    nextBtn.className = "lesson-nav-btn next";
+    nextBtn.textContent = currentIndex === LESSONS.length - 1 ? "Finish" : "Next lesson →";
+    nextBtn.disabled = currentIndex === LESSONS.length - 1;
+    nextBtn.addEventListener("click", function () { goToLesson(currentIndex + 1); });
+    navWrap.appendChild(nextBtn);
+
+    laneEl.appendChild(navWrap);
+
+    renderSidebar();
+    renderDots();
+  }
+
+  function goToLesson(index) {
+    if (index < 0 || index >= LESSONS.length) return;
+    currentIndex = index;
+    renderLesson();
+    laneEl.scrollTop = 0;
+    window.scrollTo(0, 0);
+  }
+
+  renderLesson();
+})();
+</script>
+</body>
+</html>
