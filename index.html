@@ -283,6 +283,232 @@
     applyTheme(current === 'dark' ? 'light' : 'dark');
   });
 
+  // ---- Physics module (pure functions, no DOM) --------------------------
+
+  var Physics = {
+    areaFromDiameter: function (d) {
+      return Math.PI * Math.pow(d / 2, 2);
+    },
+
+    continuityVelocity: function (A1, V1, A2) {
+      return (A1 * V1) / A2;
+    },
+
+    // Fills in whichever single field of {A1,V1,A2,V2} is null/undefined
+    // using A1*V1 = A2*V2. Returns null if zero or more than one field is
+    // unknown (under/over-determined).
+    solveContinuity: function (fields) {
+      var keys = ['A1', 'V1', 'A2', 'V2'];
+      var unknown = null;
+      for (var i = 0; i < keys.length; i++) {
+        var k = keys[i];
+        if (fields[k] === null || fields[k] === undefined || fields[k] === '') {
+          if (unknown !== null) return null; // more than one unknown
+          unknown = k;
+        }
+      }
+      if (unknown === null) return null; // nothing to solve for
+
+      var A1 = fields.A1, V1 = fields.V1, A2 = fields.A2, V2 = fields.V2;
+      var result = { A1: A1, V1: V1, A2: A2, V2: V2 };
+      if (unknown === 'A1') result.A1 = (A2 * V2) / V1;
+      else if (unknown === 'V1') result.V1 = (A2 * V2) / A1;
+      else if (unknown === 'A2') result.A2 = (A1 * V1) / V2;
+      else if (unknown === 'V2') result.V2 = (A1 * V1) / A2;
+      return result;
+    },
+
+    // Bernoulli: P1 + 1/2 rho V1^2 + rho g h1 = P2 + 1/2 rho V2^2 + rho g h2
+    // Returns the dynamic and hydrostatic pressure terms at one station.
+    bernoulliTerms: function (rho, V, h, g) {
+      g = g === undefined ? 9.81 : g;
+      return {
+        dynamic: 0.5 * rho * V * V,
+        hydrostatic: rho * g * h
+      };
+    }
+  };
+
+  var FLUID_PRESETS = {
+    water: { label: 'Water', density: 1000 },
+    air: { label: 'Air', density: 1.225 },
+    oil: { label: 'Oil', density: 900 }
+  };
+
+  // ---- Pipe geometry helpers ---------------------------------------------
+
+  function clamp(v, min, max) {
+    return Math.min(max, Math.max(min, v));
+  }
+
+  function smoothstep(t) {
+    t = clamp(t, 0, 1);
+    return t * t * (3 - 2 * t);
+  }
+
+  // Blends from rBefore to rAfter as x moves from xStart to xEnd, flat
+  // outside that range. x, xStart, xEnd are in normalized pipe-length
+  // space [0,1]; r values are normalized half-widths (fraction of the
+  // viz's available half-height).
+  var PipeGeometry = {
+    smoothTaper: function (x, xStart, xEnd, rBefore, rAfter) {
+      var t = (x - xStart) / (xEnd - xStart);
+      return rBefore + (rAfter - rBefore) * smoothstep(t);
+    }
+  };
+
+  // ---- Shared pipe-flow visualization component --------------------------
+  //
+  // A factory, not a class: createPipeFlowViz(canvas, options) returns a
+  // controller. Both the Venturi tool and the Bernoulli/Continuity tool
+  // create their own instance, each supplying its own getProfile()/
+  // getInletVelocity() closures over its own current input state -- the
+  // draw/animate code itself is never duplicated between them.
+  //
+  // options:
+  //   getProfile()        -> { radiusFn(x) } for x in [0,1], radiusFn
+  //                          returns a normalized half-width in (0, 1]
+  //   getInletVelocity()  -> current inlet velocity (any positive unit;
+  //                          only relative speed across x matters visually)
+  //   particleCount        (default 18)
+  //   colorFn(speedFactor) -> css color string; speedFactor is the local
+  //                          speed relative to the inlet speed (1 = inlet)
+
+  function createPipeFlowViz(canvas, options) {
+    var ctx = canvas.getContext('2d');
+    var particleCount = options.particleCount || 18;
+    var colorFn = options.colorFn || defaultColorFn;
+    var profile = options.getProfile;
+    var BASE_SPEED = 0.12; // normalized pipe-lengths per second at speedFactor 1
+
+    var particles = [];
+    for (var i = 0; i < particleCount; i++) {
+      particles.push({
+        x: i / particleCount,
+        lane: (Math.random() * 2 - 1) * 0.7
+      });
+    }
+
+    var rafId = null;
+    var lastTime = null;
+
+    function defaultColorFn(speedFactor) {
+      // Slow = accent teal, fast = accent amber (matches the portal's
+      // two accent colors rather than an unrelated blue/red scale).
+      var t = clamp((speedFactor - 1) / 4, 0, 1);
+      var slow = [59, 154, 168];
+      var fast = [181, 121, 31];
+      var c = slow.map(function (s, idx) {
+        return Math.round(s + (fast[idx] - s) * t);
+      });
+      return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
+    }
+
+    function speedFactorAt(x) {
+      var p = profile();
+      var r0 = p.radiusFn(0);
+      var rX = p.radiusFn(x);
+      return (r0 * r0) / (rX * rX);
+    }
+
+    function resize() {
+      var rect = canvas.getBoundingClientRect();
+      var dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.round(rect.width * dpr));
+      canvas.height = Math.max(1, Math.round(rect.height * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function draw() {
+      var rect = canvas.getBoundingClientRect();
+      var w = rect.width;
+      var h = rect.height;
+      var centerY = h / 2;
+      var scaleY = (h / 2) * 0.9;
+      var p = profile();
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Pipe walls.
+      ctx.beginPath();
+      var steps = 60;
+      for (var i = 0; i <= steps; i++) {
+        var x = i / steps;
+        var y = centerY - p.radiusFn(x) * scaleY;
+        if (i === 0) ctx.moveTo(x * w, y);
+        else ctx.lineTo(x * w, y);
+      }
+      for (var i2 = steps; i2 >= 0; i2--) {
+        var x2 = i2 / steps;
+        var y2 = centerY + p.radiusFn(x2) * scaleY;
+        ctx.lineTo(x2 * w, y2);
+      }
+      ctx.closePath();
+      var wallColor = getComputedStyle(canvas).getPropertyValue('--fg').trim() || '#1a2027';
+      ctx.strokeStyle = wallColor;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Particles.
+      for (var j = 0; j < particles.length; j++) {
+        var particle = particles[j];
+        var r = p.radiusFn(particle.x);
+        var py = centerY + particle.lane * r * scaleY;
+        var px = particle.x * w;
+        var speedFactor = speedFactorAt(particle.x);
+        ctx.beginPath();
+        ctx.fillStyle = colorFn(speedFactor);
+        ctx.ellipse(px, py, 3 + clamp(speedFactor - 1, 0, 3) * 1.2, 2.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function step(timestamp) {
+      if (lastTime === null) lastTime = timestamp;
+      var dt = (timestamp - lastTime) / 1000;
+      lastTime = timestamp;
+
+      var velocity = options.getInletVelocity ? options.getInletVelocity() : 1;
+
+      for (var i = 0; i < particles.length; i++) {
+        var particle = particles[i];
+        var speedFactor = speedFactorAt(particle.x);
+        particle.x += velocity * speedFactor * BASE_SPEED * dt;
+        if (particle.x > 1) {
+          particle.x -= 1;
+          particle.lane = (Math.random() * 2 - 1) * 0.7;
+        }
+      }
+
+      draw();
+      rafId = requestAnimationFrame(step);
+    }
+
+    resize();
+    draw();
+
+    return {
+      start: function () {
+        if (rafId !== null) return;
+        lastTime = null;
+        rafId = requestAnimationFrame(step);
+      },
+      stop: function () {
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+      },
+      resize: function () {
+        resize();
+        draw();
+      },
+      setProfile: function (profileFn) {
+        profile = profileFn;
+      }
+    };
+  }
+
   // ---- Tool registry -----------------------------------------------------
   // Adding a future tool: write its <template>, write its init function,
   // push one entry here. Nothing else in the shell changes.

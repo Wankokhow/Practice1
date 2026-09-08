@@ -75,11 +75,11 @@ full spec.
   toggle), home/tool view containers, empty `<template>` stubs, tool
   registry + hash router + grid renderer, theme toggle via CSS vars +
   localStorage. Proven with 2 placeholder templates.
-- `[ ]` **Phase 2 — Shared physics + pipe-flow viz**: physics module (pure
+- `[x]` **Phase 2 — Shared physics + pipe-flow viz**: physics module (pure
   functions, no DOM); `createPipeFlowViz(canvas, options)` factory
   (smoothstep-tapered `radiusFn`, particles advancing by
   `velocity/area(x)`, speed-colored draw loop); sanity-checked against a
-  throwaway profile before any tool wires it in.
+  throwaway profile — not yet wired into either tool.
 - `[ ]` **Phase 3 — Venturi Tube tool**: template (mode toggle
   convergent/divergent, throat-diameter + inlet-velocity sliders, fluid
   dropdown + custom density, canvas, live velocity/pressure readouts,
