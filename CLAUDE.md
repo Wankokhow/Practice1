@@ -53,6 +53,23 @@ full spec.
 - **Theme**: toggle → `data-theme` attr + `localStorage['fdl-theme']` → all
   CSS via custom properties + canvas colors re-read at draw time
 
+### Visual design — Direction A: "Technical Lab" (chosen)
+- **Fonts**: `IBM Plex Sans` (UI/headings), `IBM Plex Mono` (data readouts,
+  values, labels) — via Google Fonts `<link>` in `<head>`.
+- **Palette (light)**: bg `#fafbfc`, fg `#1a2027`, muted `#5b6670`, card bg
+  `#ffffff`, border `#d7dee5`, accent primary (teal) `#3b9aa8`, accent
+  secondary (amber) `#b5791f`.
+- **Palette (dark)**: bg `#14181c`, fg `#e7ecf0`, muted `#8a97a1`, card bg
+  `#1b2126`, border `#2b333a`, same accent hex values (kept unchanged across
+  themes — sufficiently legible on both).
+- **Look**: rectangular cards, minimal border-radius (~4–5px), 1px borders,
+  thin-line SVG icons, faint dot/grid "blueprint" texture behind content,
+  monospace used specifically for numeric readouts/values to separate data
+  from UI chrome.
+- Reference mockup (for tone/layout, not exact markup):
+  https://claude.ai/code/artifact/97ef6c25-36ae-41d1-a290-0468d580b4ee
+  (artboard "A — Technical Lab")
+
 ### Phases
 - `[ ]` **Phase 1 — Shell & routing**: header (title, Home button, theme
   toggle), home/tool view containers, empty `<template>` stubs, tool
