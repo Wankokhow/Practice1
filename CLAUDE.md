@@ -95,6 +95,14 @@ full spec.
   viz + solver. The "exactly-one-blank" rule is enforced by a radio group
   (pick which of D1/V1/D2/V2 to solve for; its input is disabled and
   computed live) rather than by validating literal blank fields.
-- `[ ]` **Phase 5 — Polish**: correct teardown on rapid tool switching (no
-  leaked rAF loops), responsive layout at narrow widths, dark-mode
-  canvas/particle contrast check, initial-hash-on-load deep linking.
+- `[x]` **Phase 5 — Polish**: verified no leaked `requestAnimationFrame`
+  loops across rapid tool switching, no horizontal overflow at 375px on
+  any view, dark-mode canvas/particle contrast is legible on both tools,
+  and hash deep-linking (including an unknown hash falling back to home)
+  all work. Fixed a real bug found along the way: `element.hidden = ...`
+  doesn't reflect to the `hidden` attribute on `<svg>` elements in this
+  browser, so the theme-toggle icon never appeared — switched to explicit
+  `setAttribute`/`removeAttribute`.
+
+**Phase one complete.** All 5 phases done; `index.html` ships the full
+portal shell plus both tools.

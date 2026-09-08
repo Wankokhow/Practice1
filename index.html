@@ -554,11 +554,18 @@
 
   var THEME_KEY = 'fdl-theme';
 
+  function setHidden(el, hidden) {
+    // el.hidden = ... doesn't reliably reflect to the "hidden" content
+    // attribute on <svg> elements in every browser, so set it directly.
+    if (hidden) el.setAttribute('hidden', '');
+    else el.removeAttribute('hidden');
+  }
+
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem(THEME_KEY, theme);
-    document.getElementById('theme-icon-dark').hidden = theme !== 'dark';
-    document.getElementById('theme-icon-light').hidden = theme === 'dark';
+    setHidden(document.getElementById('theme-icon-dark'), theme !== 'dark');
+    setHidden(document.getElementById('theme-icon-light'), theme === 'dark');
   }
 
   function initialTheme() {
