@@ -76,10 +76,11 @@
   .progress-dots {
     display: flex;
     gap: 8px;
+    flex-wrap: wrap;
   }
 
   .progress-dots .dot {
-    width: 34px;
+    width: 26px;
     height: 8px;
     border-radius: 5px;
     background: var(--border);
@@ -236,6 +237,119 @@
     color: var(--fg);
   }
 
+  /* --- Interactive simulator --- */
+
+  .simulator {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 22px 24px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+
+  .sim-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .sim-n-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: var(--fg);
+  }
+
+  .sim-n-row .sim-n-value {
+    font-family: 'Space Mono', monospace;
+    color: var(--accent);
+    font-weight: 700;
+    min-width: 26px;
+    text-align: right;
+  }
+
+  .sim-n-row input[type="range"] {
+    flex-grow: 1;
+    accent-color: var(--accent);
+  }
+
+  .sim-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+  }
+
+  .sim-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--muted);
+    user-select: none;
+  }
+
+  .sim-toggle input {
+    accent-color: var(--sim-color, var(--accent));
+  }
+
+  .sim-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .sim-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .bar-row {
+    display: grid;
+    grid-template-columns: 96px 1fr 92px;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .bar-row .bar-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 12.5px;
+    color: var(--fg);
+  }
+
+  .bar-track {
+    height: 14px;
+    background: #f0f1f4;
+    border-radius: 7px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 7px;
+    transition: width 0.2s ease;
+  }
+
+  .bar-row .bar-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 12.5px;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  .sim-note {
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  /* --- Check-in / quiz --- */
+
   .quiz {
     display: flex;
     flex-direction: column;
@@ -254,6 +368,18 @@
     font-family: 'Space Grotesk', sans-serif;
     font-weight: 600;
     font-size: 15px;
+  }
+
+  .quiz-intro {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--muted);
+    margin: -8px 0 0 0;
+  }
+
+  .quiz-block + .quiz-block {
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
   }
 
   .quiz-question {
@@ -306,6 +432,26 @@
     cursor: default;
   }
 
+  .short-answer-input {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-family: inherit;
+    font-size: 14.5px;
+    color: var(--fg);
+  }
+
+  .short-answer-input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .short-answer-input:disabled {
+    background: #f4f5f8;
+    color: var(--muted);
+  }
+
   .quiz-actions {
     display: flex;
     align-items: center;
@@ -337,12 +483,6 @@
     cursor: not-allowed;
   }
 
-  .btn-ghost {
-    background: transparent;
-    border-color: var(--border);
-    color: var(--muted);
-  }
-
   .quiz-feedback {
     font-size: 14px;
     line-height: 1.6;
@@ -350,6 +490,13 @@
 
   .quiz-feedback.good { color: var(--good); }
   .quiz-feedback.bad { color: var(--bad); }
+
+  .quiz-summary {
+    font-size: 14.5px;
+    font-weight: 500;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
 
   .lesson-nav {
     display: flex;
@@ -421,6 +568,10 @@
     .lesson-title {
       font-size: 24px;
     }
+
+    .bar-row {
+      grid-template-columns: 76px 1fr 76px;
+    }
   }
 </style>
 </head>
@@ -432,7 +583,7 @@
   </header>
 
   <div class="layout">
-    <nav class="sidebar" id="sidebar" aria-label="Lessons"></nav>
+    <nav class="sidebar" id="sidebar" aria-label="Course sections"></nav>
     <main class="lesson-pane" id="lesson-pane"></main>
   </div>
 </div>
@@ -441,9 +592,20 @@
 (function () {
   "use strict";
 
+  // ---- Growth functions used by both Lesson 2's text and the simulator ----
+  var COMPLEXITY_CLASSES = [
+    { key: "o1", label: "O(1)", color: "#1f8a5a", fn: function () { return 1; } },
+    { key: "ologn", label: "O(log n)", color: "#3454d1", fn: function (n) { return Math.max(1, Math.ceil(Math.log2(n))); } },
+    { key: "on", label: "O(n)", color: "#c47a1f", fn: function (n) { return n; } },
+    { key: "onlogn", label: "O(n log n)", color: "#7b3fa0", fn: function (n) { return Math.max(1, Math.ceil(n * Math.log2(Math.max(n, 1)))); } },
+    { key: "on2", label: "O(n²)", color: "#c2412c", fn: function (n) { return n * n; } },
+    { key: "o2n", label: "O(2ⁿ)", color: "#16181d", fn: function (n) { return Math.pow(2, n); } }
+  ];
+
   var LESSONS = [
     {
       id: "what-is-big-o",
+      kind: "lesson",
       navLabel: "What Is Big-O?",
       title: "What Is Big-O Notation?",
       kicker: "LESSON 1",
@@ -465,33 +627,16 @@
           "It's a tool for comparing algorithms' scalability, not for predicting exact runtimes."
         ]}
       ],
-      quiz: [
-        {
-          question: "What does Big-O notation primarily describe?",
-          options: [
-            "The exact number of milliseconds an algorithm takes to run",
-            "How an algorithm's resource use grows as input size increases",
-            "How many lines of code an algorithm has",
-            "The programming language's overall performance"
-          ],
-          correctIndex: 1,
-          explanation: "Big-O describes the growth trend as input size (n) increases, not a literal timing measurement."
-        },
-        {
-          question: "Why does Big-O ignore constant factors like the difference between O(n) and O(2n)?",
-          options: [
-            "Constants are impossible to calculate",
-            "Because at large enough n, the growth shape (linear, in this case) matters far more than the constant multiplier",
-            "Because all algorithms have the same constants",
-            "Constants only apply to sorting algorithms"
-          ],
-          correctIndex: 1,
-          explanation: "Big-O is about the dominant growth trend at scale; constant multipliers don't change that trend, so they're dropped."
-        }
-      ]
+      checkIn: {
+        type: "short",
+        question: "In your own words: what does the variable n typically represent in Big-O notation?",
+        acceptableContains: ["input size", "size of the input", "size of input", "number of elements", "number of items", "input's size"],
+        explanation: "n usually stands for the size of the input — the number of elements or items the algorithm has to work with."
+      }
     },
     {
       id: "complexity-classes",
+      kind: "lesson",
       navLabel: "Complexity Classes",
       title: "Common Complexity Classes",
       kicker: "LESSON 2",
@@ -516,26 +661,20 @@
         ]},
         { code: "// O(1)\nfunction firstItem(arr) { return arr[0]; }\n\n// O(log n)\nfunction binarySearch(arr, target) { /* halves the range each step */ }\n\n// O(n)\nfunction sum(arr) {\n  let total = 0;\n  for (const x of arr) total += x;\n  return total;\n}\n\n// O(n^2)\nfunction hasDuplicate(arr) {\n  for (let i = 0; i < arr.length; i++)\n    for (let j = 0; j < arr.length; j++)\n      if (i !== j && arr[i] === arr[j]) return true;\n  return false;\n}" },
         { paragraphs: [
-          "Ranked from fastest-growing to slowest-growing for large <code class=\"mono\">n</code>: <code class=\"mono\">O(1)</code> &lt; <code class=\"mono\">O(log n)</code> &lt; <code class=\"mono\">O(n)</code> &lt; <code class=\"mono\">O(n log n)</code> &lt; <code class=\"mono\">O(n&sup2;)</code> &lt; <code class=\"mono\">O(2&sup2;)</code>. The further right you are on that list, the more painful large inputs become."
+          "Ranked from fastest-growing to slowest-growing for large <code class=\"mono\">n</code>: <code class=\"mono\">O(1)</code> &lt; <code class=\"mono\">O(log n)</code> &lt; <code class=\"mono\">O(n)</code> &lt; <code class=\"mono\">O(n log n)</code> &lt; <code class=\"mono\">O(n&sup2;)</code> &lt; <code class=\"mono\">O(2&sup2;)</code>. The further right you are on that list, the more painful large inputs become. The next section lets you play with these growth rates directly."
         ]}
       ],
-      quiz: [
-        {
-          question: "Which complexity class does binary search on a sorted array belong to?",
-          options: ["O(1)", "O(log n)", "O(n)", "O(n²)"],
-          correctIndex: 1,
-          explanation: "Binary search halves the remaining search space on each comparison, which is the defining behavior of O(log n)."
-        },
-        {
-          question: "A function with two nested loops, each iterating over the full input, is typically:",
-          options: ["O(n)", "O(n log n)", "O(n²)", "O(1)"],
-          correctIndex: 2,
-          explanation: "Nested loops over the same input multiply their iteration counts together, giving O(n) * O(n) = O(n²)."
-        }
-      ]
+      checkIn: {
+        type: "mc",
+        question: "Which of these grows fastest as n increases?",
+        options: ["O(n)", "O(log n)", "O(n²)", "O(1)"],
+        correctIndex: 2,
+        explanation: "O(n²) grows fastest among these options — quadratic growth outpaces linear, logarithmic, and constant time."
+      }
     },
     {
       id: "analyzing-code",
+      kind: "lesson",
       navLabel: "Analyzing Code",
       title: "Analyzing Code for Time Complexity",
       kicker: "LESSON 3",
@@ -560,28 +699,17 @@
           "Walking through a snippet like this line by line, labeling each loop's contribution, is usually enough to reach the right answer without any formal machinery."
         ]}
       ],
-      quiz: [
-        {
-          question: "A function does one O(n) loop, then a separate O(n²) nested loop afterward. What is its overall time complexity?",
-          options: ["O(n)", "O(n²)", "O(n³)", "O(2n²)"],
-          correctIndex: 1,
-          explanation: "Sequential steps add rather than multiply, and only the fastest-growing term survives simplification: O(n) + O(n²) = O(n²)."
-        },
-        {
-          question: "What's the strongest signal that a piece of code runs in O(log n)?",
-          options: [
-            "It uses a for loop",
-            "It processes every element exactly once",
-            "It repeatedly divides the remaining problem size by a constant factor",
-            "It calls another function"
-          ],
-          correctIndex: 2,
-          explanation: "Cutting the remaining work by a constant fraction each step (like binary search halving the array) is the defining pattern of logarithmic growth."
-        }
-      ]
+      checkIn: {
+        type: "mc",
+        question: "Two independent (non-nested) loops, each O(n), one after another, combine to give what overall complexity?",
+        options: ["O(n)", "O(n²)", "O(n log n)", "O(1)"],
+        correctIndex: 0,
+        explanation: "Sequential O(n) steps add together: O(n) + O(n) = O(2n), which simplifies to O(n) since constant multipliers are dropped."
+      }
     },
     {
       id: "space-complexity",
+      kind: "lesson",
       navLabel: "Space & Trade-offs",
       title: "Space Complexity & Time-Space Trade-offs",
       kicker: "LESSON 4",
@@ -605,39 +733,80 @@
           "Trading space for time (caching, precomputed lookup tables, hash maps) is one of the most common optimization patterns in practice."
         ]}
       ],
-      quiz: [
+      checkIn: {
+        type: "mc",
+        question: "What does memoizing a recursive function typically trade to improve its time complexity?",
+        options: ["Accuracy for speed", "Extra memory (space) for reduced time", "Readability for performance", "Nothing — it's free"],
+        correctIndex: 1,
+        explanation: "Memoization stores previously computed results, trading additional space for a reduction in repeated work (time)."
+      }
+    },
+    {
+      id: "simulator",
+      kind: "simulator",
+      navLabel: "Growth Simulator",
+      title: "Simulator: Compare Growth Rates Live",
+      kicker: "LESSON 5",
+      body: [
+        { paragraphs: [
+          "Reading about complexity classes only goes so far &mdash; the difference between O(n) and O(n&sup2;) becomes obvious once you can see the operation counts side by side. Drag the slider below to change the input size <code class=\"mono\">n</code>, and watch how many operations each complexity class needs at that size."
+        ]}
+      ],
+      checkIn: {
+        type: "mc",
+        question: "In the simulator, as n grows large, which curve pulls away from the others fastest?",
+        options: ["O(1)", "O(log n)", "O(n)", "O(2ⁿ)"],
+        correctIndex: 3,
+        explanation: "Exponential growth (O(2ⁿ)) outpaces every other class shown here, even for fairly modest values of n."
+      }
+    },
+    {
+      id: "final-quiz",
+      kind: "final",
+      navLabel: "Final Quiz",
+      title: "Final Quiz: Test Your Knowledge",
+      kicker: "FINAL QUIZ",
+      intro: "Three questions covering everything from this course. Answer each one to see how you did.",
+      questions: [
         {
-          question: "What does \"auxiliary space\" refer to?",
-          options: [
-            "The total size of the input data",
-            "Extra memory an algorithm uses beyond the input itself",
-            "The number of CPU cores available",
-            "The size of the compiled program"
-          ],
+          question: "Which best describes what Big-O notation measures?",
+          options: ["Exact runtime in seconds", "How resource use scales with input size", "Number of bugs in the code", "Memory address size"],
           correctIndex: 1,
-          explanation: "Auxiliary space is the additional memory an algorithm allocates on top of the input it was given."
+          explanation: "Big-O describes how an algorithm's time or space needs grow as input size increases — not a literal timing or bug count."
         },
         {
-          question: "Memoizing a recursive Fibonacci function improves its time complexity from exponential to linear. What does it cost?",
-          options: [
-            "Nothing, it's strictly better",
-            "It requires O(n) additional space to store cached results",
-            "It makes the code impossible to read",
-            "It only works for even values of n"
-          ],
-          correctIndex: 1,
-          explanation: "The cache that avoids recomputation has to be stored somewhere, which is exactly the time-space trade-off in action."
+          question: "Which of these has the smallest (slowest) growth rate for large n?",
+          options: ["O(n²)", "O(n log n)", "O(log n)", "O(n)"],
+          correctIndex: 2,
+          explanation: "Of these four, O(log n) grows the slowest — each step only needs to eliminate a fraction of the remaining problem."
+        },
+        {
+          question: "What is the main cost of using memoization to speed up a recursive algorithm?",
+          options: ["It requires additional memory to store cached results", "It makes the algorithm less accurate", "It only works on sorted data", "It increases the time complexity"],
+          correctIndex: 0,
+          explanation: "Memoization trades space for time: the cache of previously computed results has to be stored somewhere."
         }
       ]
     }
   ];
 
-  var quizState = {};
-  LESSONS.forEach(function (lesson) {
-    quizState[lesson.id] = lesson.quiz.map(function () {
-      return { selected: null, submitted: false };
-    });
+  // ---- State ----
+
+  var sectionState = {};
+  LESSONS.forEach(function (section) {
+    if (section.kind === "lesson" || section.kind === "simulator") {
+      sectionState[section.id] = section.checkIn.type === "mc"
+        ? { selected: null, submitted: false }
+        : { text: "", submitted: false };
+    } else if (section.kind === "final") {
+      sectionState[section.id] = section.questions.map(function () {
+        return { selected: null, submitted: false };
+      });
+    }
   });
+
+  var simState = { n: 10, enabled: {} };
+  COMPLEXITY_CLASSES.forEach(function (c) { simState.enabled[c.key] = true; });
 
   var currentIndex = 0;
 
@@ -645,15 +814,17 @@
   var laneEl = document.getElementById("lesson-pane");
   var dotsEl = document.getElementById("progress-dots");
 
+  // ---- Sidebar / progress ----
+
   function renderSidebar() {
     sidebarEl.innerHTML = "";
-    LESSONS.forEach(function (lesson, i) {
+    LESSONS.forEach(function (section, i) {
       var btn = document.createElement("button");
       btn.className = "nav-item" + (i === currentIndex ? " active" : "") + (i < currentIndex ? " done" : "");
       btn.setAttribute("type", "button");
       btn.innerHTML =
         '<span class="step-badge">' + (i + 1) + '</span>' +
-        '<span class="nav-label">' + lesson.navLabel + '</span>';
+        '<span class="nav-label">' + section.navLabel + '</span>';
       btn.addEventListener("click", function () { goToLesson(i); });
       sidebarEl.appendChild(btn);
     });
@@ -667,6 +838,8 @@
       dotsEl.appendChild(dot);
     });
   }
+
+  // ---- Lesson body rendering ----
 
   function renderBodyBlock(block) {
     var html = "";
@@ -691,8 +864,150 @@
     return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
-  function renderQuiz(lesson) {
-    var state = quizState[lesson.id];
+  // ---- Simulator ----
+
+  function renderSimulator() {
+    var wrap = document.createElement("div");
+    wrap.className = "simulator";
+
+    var controls = document.createElement("div");
+    controls.className = "sim-controls";
+
+    var nRow = document.createElement("div");
+    nRow.className = "sim-n-row";
+    var nLabel = document.createElement("label");
+    nLabel.textContent = "Input size n =";
+    nLabel.setAttribute("for", "sim-slider");
+    var nValue = document.createElement("span");
+    nValue.className = "sim-n-value mono";
+    nValue.textContent = simState.n;
+    var slider = document.createElement("input");
+    slider.type = "range";
+    slider.id = "sim-slider";
+    slider.min = "1";
+    slider.max = "30";
+    slider.value = String(simState.n);
+    slider.addEventListener("input", function () {
+      simState.n = parseInt(slider.value, 10);
+      updateSimulatorOutput();
+    });
+    nRow.appendChild(nLabel);
+    nRow.appendChild(slider);
+    nRow.appendChild(nValue);
+    controls.appendChild(nRow);
+
+    var toggles = document.createElement("div");
+    toggles.className = "sim-toggles";
+    COMPLEXITY_CLASSES.forEach(function (c) {
+      var toggle = document.createElement("label");
+      toggle.className = "sim-toggle";
+      var swatch = document.createElement("span");
+      swatch.className = "sim-swatch";
+      swatch.style.background = c.color;
+      var cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = simState.enabled[c.key];
+      cb.addEventListener("change", function () {
+        simState.enabled[c.key] = cb.checked;
+        updateSimulatorOutput();
+      });
+      toggle.appendChild(cb);
+      toggle.appendChild(swatch);
+      toggle.appendChild(document.createTextNode(c.label));
+      toggles.appendChild(toggle);
+    });
+    controls.appendChild(toggles);
+
+    wrap.appendChild(controls);
+
+    var barsWrap = document.createElement("div");
+    barsWrap.className = "sim-bars";
+    barsWrap.id = "sim-bars";
+    wrap.appendChild(barsWrap);
+
+    var note = document.createElement("p");
+    note.className = "sim-note";
+    note.id = "sim-note";
+    wrap.appendChild(note);
+
+    renderSimulatorBars(barsWrap);
+    updateSimulatorNote(note);
+
+    return wrap;
+  }
+
+  function renderSimulatorBars(barsWrap) {
+    barsWrap.innerHTML = "";
+    COMPLEXITY_CLASSES.forEach(function (c) {
+      var row = document.createElement("div");
+      row.className = "bar-row";
+      row.dataset.key = c.key;
+      row.style.display = simState.enabled[c.key] ? "grid" : "none";
+
+      var name = document.createElement("div");
+      name.className = "bar-name";
+      name.textContent = c.label;
+      row.appendChild(name);
+
+      var track = document.createElement("div");
+      track.className = "bar-track";
+      var fill = document.createElement("div");
+      fill.className = "bar-fill";
+      fill.style.background = c.color;
+      track.appendChild(fill);
+      row.appendChild(track);
+
+      var value = document.createElement("div");
+      value.className = "bar-value mono";
+      row.appendChild(value);
+
+      barsWrap.appendChild(row);
+    });
+    updateSimulatorBarValues(barsWrap);
+  }
+
+  function updateSimulatorBarValues(barsWrap) {
+    var n = simState.n;
+    var maxVal = 1;
+    COMPLEXITY_CLASSES.forEach(function (c) {
+      if (simState.enabled[c.key]) maxVal = Math.max(maxVal, c.fn(n));
+    });
+    var logMax = Math.log10(maxVal + 1) || 1;
+
+    COMPLEXITY_CLASSES.forEach(function (c) {
+      var row = barsWrap.querySelector('.bar-row[data-key="' + c.key + '"]');
+      if (!row) return;
+      row.style.display = simState.enabled[c.key] ? "grid" : "none";
+      var val = c.fn(n);
+      var pct = Math.max(2, Math.round((Math.log10(val + 1) / logMax) * 100));
+      row.querySelector(".bar-fill").style.width = pct + "%";
+      row.querySelector(".bar-value").textContent = val.toLocaleString() + (val === 1 ? " step" : " steps");
+    });
+  }
+
+  function updateSimulatorNote(note) {
+    var o2n = COMPLEXITY_CLASSES.filter(function (c) { return c.key === "o2n"; })[0];
+    var on = COMPLEXITY_CLASSES.filter(function (c) { return c.key === "on"; })[0];
+    var ratio = Math.round(o2n.fn(simState.n) / on.fn(simState.n));
+    note.textContent = "At n = " + simState.n + ", O(2ⁿ) already needs about " + ratio.toLocaleString() +
+      "× as many steps as O(n). That gap only widens as n grows further.";
+  }
+
+  function updateSimulatorOutput() {
+    var nValue = document.querySelector("#sim-slider").parentElement.querySelector(".sim-n-value");
+    if (nValue) nValue.textContent = simState.n;
+    var barsWrap = document.getElementById("sim-bars");
+    if (barsWrap) updateSimulatorBarValues(barsWrap);
+    var note = document.getElementById("sim-note");
+    if (note) updateSimulatorNote(note);
+  }
+
+  // ---- Check-in (single question per lesson/simulator section) ----
+
+  function renderCheckIn(section) {
+    var q = section.checkIn;
+    var state = sectionState[section.id];
+
     var wrap = document.createElement("div");
     wrap.className = "quiz";
 
@@ -701,17 +1016,62 @@
     heading.textContent = "Check your understanding";
     wrap.appendChild(heading);
 
-    lesson.quiz.forEach(function (q, qi) {
-      var qState = state[qi];
+    wrap.appendChild(buildQuestionBlock(q, state, { numbered: false }));
 
-      var qWrap = document.createElement("div");
-      qWrap.className = "quiz-block";
+    return wrap;
+  }
 
-      var qText = document.createElement("div");
-      qText.className = "quiz-question";
-      qText.textContent = (qi + 1) + ". " + q.question;
-      qWrap.appendChild(qText);
+  // ---- Final quiz (3 questions) ----
 
+  function renderFinalQuiz(section) {
+    var states = sectionState[section.id];
+
+    var wrap = document.createElement("div");
+    wrap.className = "quiz";
+
+    var intro = document.createElement("p");
+    intro.className = "quiz-intro";
+    intro.textContent = section.intro;
+    wrap.appendChild(intro);
+
+    section.questions.forEach(function (q, qi) {
+      wrap.appendChild(buildQuestionBlock(q, states[qi], { numbered: true, number: qi + 1 }));
+    });
+
+    var allSubmitted = states.every(function (s) { return s.submitted; });
+    if (allSubmitted) {
+      var correctCount = states.filter(function (s) { return s.selected === section.questions[states.indexOf(s)].correctIndex; }).length;
+      var summary = document.createElement("div");
+      summary.className = "quiz-summary";
+      summary.textContent = "You got " + correctCount + " out of " + section.questions.length + " correct.";
+      wrap.appendChild(summary);
+    }
+
+    return wrap;
+  }
+
+  // ---- Shared question block (used by both check-ins and the final quiz) ----
+
+  function buildQuestionBlock(q, state, opts) {
+    var qWrap = document.createElement("div");
+    qWrap.className = "quiz-block";
+
+    var qText = document.createElement("div");
+    qText.className = "quiz-question";
+    qText.textContent = (opts.numbered ? opts.number + ". " : "") + q.question;
+    qWrap.appendChild(qText);
+
+    var checkBtn = document.createElement("button");
+    checkBtn.type = "button";
+    checkBtn.className = "btn btn-primary";
+    checkBtn.textContent = state.submitted ? "Checked" : "Check answer";
+
+    function refreshCheckBtn() {
+      var hasAnswer = q.type === "short" ? (state.text && state.text.trim().length > 0) : state.selected !== null;
+      checkBtn.disabled = !hasAnswer || state.submitted;
+    }
+
+    if (q.type === "mc" || q.options) {
       var optsWrap = document.createElement("div");
       optsWrap.className = "quiz-options";
 
@@ -719,71 +1079,96 @@
         var optBtn = document.createElement("button");
         optBtn.type = "button";
         optBtn.className = "quiz-option";
-        if (qState.selected === oi) optBtn.classList.add("selected");
-        if (qState.submitted) {
+        if (state.selected === oi) optBtn.classList.add("selected");
+        if (state.submitted) {
           optBtn.disabled = true;
           if (oi === q.correctIndex) optBtn.classList.add("correct");
-          else if (oi === qState.selected) optBtn.classList.add("incorrect");
+          else if (oi === state.selected) optBtn.classList.add("incorrect");
         }
         optBtn.textContent = opt;
         optBtn.addEventListener("click", function () {
-          qState.selected = oi;
-          qState.submitted = false;
+          state.selected = oi;
+          state.submitted = false;
           renderLesson();
         });
         optsWrap.appendChild(optBtn);
       });
       qWrap.appendChild(optsWrap);
-
-      var actions = document.createElement("div");
-      actions.className = "quiz-actions";
-
-      var checkBtn = document.createElement("button");
-      checkBtn.type = "button";
-      checkBtn.className = "btn btn-primary";
-      checkBtn.textContent = qState.submitted ? "Checked" : "Check answer";
-      checkBtn.disabled = qState.selected === null || qState.submitted;
-      checkBtn.addEventListener("click", function () {
-        qState.submitted = true;
-        renderLesson();
+    } else {
+      var input = document.createElement("input");
+      input.type = "text";
+      input.className = "short-answer-input";
+      input.placeholder = "Type your answer…";
+      input.value = state.text || "";
+      input.disabled = state.submitted;
+      input.addEventListener("input", function () {
+        state.text = input.value;
+        refreshCheckBtn();
       });
-      actions.appendChild(checkBtn);
-      qWrap.appendChild(actions);
+      qWrap.appendChild(input);
+    }
 
-      if (qState.submitted) {
-        var feedback = document.createElement("div");
-        var isCorrect = qState.selected === q.correctIndex;
-        feedback.className = "quiz-feedback " + (isCorrect ? "good" : "bad");
-        feedback.textContent = (isCorrect ? "Correct. " : "Not quite. ") + q.explanation;
-        qWrap.appendChild(feedback);
-      }
+    var actions = document.createElement("div");
+    actions.className = "quiz-actions";
 
-      wrap.appendChild(qWrap);
+    refreshCheckBtn();
+    checkBtn.addEventListener("click", function () {
+      state.submitted = true;
+      renderLesson();
     });
+    actions.appendChild(checkBtn);
+    qWrap.appendChild(actions);
 
-    return wrap;
+    if (state.submitted) {
+      var isCorrect = q.type === "short"
+        ? isShortAnswerCorrect(state.text, q.acceptableContains)
+        : state.selected === q.correctIndex;
+      var feedback = document.createElement("div");
+      feedback.className = "quiz-feedback " + (isCorrect ? "good" : "bad");
+      feedback.textContent = (isCorrect ? "Correct. " : "Not quite. ") + q.explanation;
+      qWrap.appendChild(feedback);
+    }
+
+    return qWrap;
   }
 
+  function isShortAnswerCorrect(text, acceptableContains) {
+    var normalized = (text || "").toLowerCase().replace(/[^a-z0-9\s]/g, "").trim();
+    return acceptableContains.some(function (phrase) {
+      return normalized.indexOf(phrase) !== -1;
+    });
+  }
+
+  // ---- Top-level render ----
+
   function renderLesson() {
-    var lesson = LESSONS[currentIndex];
+    var section = LESSONS[currentIndex];
     laneEl.innerHTML = "";
 
     var kicker = document.createElement("div");
     kicker.className = "kicker";
-    kicker.textContent = lesson.kicker;
+    kicker.textContent = section.kicker;
     laneEl.appendChild(kicker);
 
     var title = document.createElement("h1");
     title.className = "lesson-title";
-    title.textContent = lesson.title;
+    title.textContent = section.title;
     laneEl.appendChild(title);
 
-    var body = document.createElement("div");
-    body.className = "lesson-body";
-    body.innerHTML = lesson.body.map(renderBodyBlock).join("");
-    laneEl.appendChild(body);
+    if (section.kind === "lesson" || section.kind === "simulator") {
+      var body = document.createElement("div");
+      body.className = "lesson-body";
+      body.innerHTML = section.body.map(renderBodyBlock).join("");
+      laneEl.appendChild(body);
 
-    laneEl.appendChild(renderQuiz(lesson));
+      if (section.kind === "simulator") {
+        laneEl.appendChild(renderSimulator());
+      }
+
+      laneEl.appendChild(renderCheckIn(section));
+    } else if (section.kind === "final") {
+      laneEl.appendChild(renderFinalQuiz(section));
+    }
 
     var navWrap = document.createElement("div");
     navWrap.className = "lesson-nav";
@@ -799,7 +1184,7 @@
     var nextBtn = document.createElement("button");
     nextBtn.type = "button";
     nextBtn.className = "lesson-nav-btn next";
-    nextBtn.textContent = currentIndex === LESSONS.length - 1 ? "Finish" : "Next lesson →";
+    nextBtn.textContent = currentIndex === LESSONS.length - 1 ? "Finish" : "Next section →";
     nextBtn.disabled = currentIndex === LESSONS.length - 1;
     nextBtn.addEventListener("click", function () { goToLesson(currentIndex + 1); });
     navWrap.appendChild(nextBtn);

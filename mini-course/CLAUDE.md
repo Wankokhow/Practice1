@@ -75,29 +75,52 @@ project.
 
 Status legend: `[ ]` not started, `[x]` done.
 
+6 sections total: 4 lessons + 1 interactive simulator + 1 final quiz,
+navigated the same way (sidebar + Prev/Next), all via `LESSONS`.
+
 ### Data model
-- `LESSONS`: ordered array of
-  `{ id, navLabel, title, kicker, body: [{heading?, paragraphs?, code?, list?}], quiz: [{question, options, correctIndex, explanation}] }`.
-  4 entries, one per lesson (see Phases). `body` is a small block list
-  (not a raw HTML blob) so paragraphs/code/lists render with consistent
-  markup.
+- `COMPLEXITY_CLASSES`: `{ key, label, color, fn(n) }` × 6 (O(1) through
+  O(2ⁿ)) — shared by Lesson 2's text-only ranking and the simulator's
+  live bars, so the growth functions live in one place.
+- `LESSONS`: ordered array of sections, one of three `kind`s:
+  - `"lesson"`: `{ id, navLabel, title, kicker, body: [{heading?, paragraphs?, code?, list?}], checkIn }`
+  - `"simulator"`: same shape as `"lesson"` plus rendered via
+    `renderSimulator()` (interactive controls, not static body markup).
+  - `"final"`: `{ id, navLabel, title, kicker, intro, questions: [{question, options, correctIndex, explanation}] }`
+    (3 questions).
+  - `checkIn` (one per lesson/simulator section — not an array):
+    `{ type: "mc", question, options, correctIndex, explanation }` or
+    `{ type: "short", question, acceptableContains: [...], explanation }`.
 - Runtime state (in-memory JS, not persisted): `currentIndex` into
-  `LESSONS`; per-lesson quiz state (`selectedOptionIndex`,
-  `submitted`) held in a plain object keyed by lesson id, reset only on
-  page reload — no localStorage (nothing here needs to survive a
-  refresh for a one-time course site).
+  `LESSONS`; `sectionState[id]` holds each section's check-in answer
+  (`{selected, submitted}` for mc, `{text, submitted}` for short-answer)
+  or, for the final section, an array of 3 such states; `simState`
+  holds the simulator's current `n` and which complexity classes are
+  toggled on. Nothing persisted across a reload — not needed for a
+  one-time course site.
 
 ### Key flows
-- **Navigation**: sidebar list (numbered step + label) and
-  Prev/Next buttons at the bottom of the lesson pane both call one
-  `goToLesson(index)` → updates `currentIndex`, re-renders the lesson
-  pane and the sidebar's active/upcoming states, updates the top
-  progress-dot strip. All via JS show/hide — no separate pages, no
-  hash routing needed for a fixed 4-lesson course.
-- **Quiz interaction**: selecting an option stores it in that lesson's
-  quiz state; "Check answer" reveals correct/incorrect styling per
-  option plus a one-line explanation; re-selecting before checking is
-  allowed, changing the answer after checking resets to unchecked.
+- **Navigation**: sidebar list (numbered step + label) and Prev/Next
+  buttons both call `goToLesson(index)` → re-renders the whole section
+  pane, sidebar active/done states, and the top progress-dot strip.
+  Continuing past a section's check-in is always allowed regardless of
+  correctness (Prev/Next are never gated on quiz state).
+- **Check-in (single question per lesson/simulator section)**: answering
+  → "Check answer" reveals correct/incorrect styling (mc) or a
+  substring-match grade against `acceptableContains` (short-answer),
+  plus a one-line explanation either way. Shared `buildQuestionBlock()`
+  renders both the per-section check-in and the final quiz's 3
+  questions so the interaction is identical everywhere.
+- **Simulator**: a range slider (`n` from 1–30) and one checkbox per
+  complexity class drive `updateSimulatorOutput()`, which patches just
+  the bar widths/values and the note text in place — no full
+  `renderLesson()` call on every slider tick, so the interaction stays
+  smooth. Bar width is `log10(value+1)` scaled against the largest
+  currently-visible value, since O(2ⁿ) dwarfs the others on a linear
+  scale.
+- **Final quiz**: 3 independently-checkable questions (same
+  check/feedback pattern as above); once all 3 are submitted, a
+  "You got X out of 3 correct" summary appears beneath them.
 
 ### Phases
 - `[x]` **Phase 0 — Intake**: no slides available; topic, audience, and
@@ -105,14 +128,20 @@ Status legend: `[ ]` not started, `[x]` done.
 - `[x]` **Phase 1 — Shell & navigation**: `index.html` built in the
   chosen Direction B look, `LESSONS` registry with all 4 lessons' real
   content, sidebar + progress dots + Prev/Next wired to `goToLesson`.
-  Verified with Playwright: click-through of all 4 lessons, no page
-  reload, Prev/Next disable correctly at the first/last lesson.
-- `[x]` **Phase 2 — Quizzes**: quiz rendering + check/feedback logic
-  for all 4 lessons' question sets, verified interactively (select →
-  check → correct/incorrect styling + explanation).
-- `[x]` **Phase 3 — Polish**: verified at 375px width (sidebar
-  collapses to a horizontal scrollable step strip, no horizontal
-  overflow) and at 1280px desktop. Google Fonts failed to load in the
-  sandboxed test environment (network policy), confirmed the
-  system-ui/sans-serif/monospace fallback stacks render cleanly either
-  way — not expected to recur in a normal browser.
+- `[x]` **Phase 2 — Check-ins**: per-section single check-in question
+  (mc or short-answer) replacing the earlier multi-question per-lesson
+  quiz, inline in the same view, non-blocking for navigation.
+- `[x]` **Phase 3 — Simulator section**: interactive growth-rate
+  comparison tool (slider + toggles + live bar chart) as its own
+  section between the lessons and the final quiz.
+- `[x]` **Phase 4 — Final quiz**: 3-question comprehensive quiz as the
+  last section, reusing the check-in question renderer, with a
+  completion summary.
+- `[x]` **Phase 5 — Polish**: verified with Playwright — all 6 sections
+  reachable with no page reload, short-answer and mc check-ins grade
+  correctly, simulator slider/toggles update live without losing quiz
+  state elsewhere on the page, final quiz per-question feedback +
+  summary, no horizontal overflow at 375px or 1280px. Google Fonts
+  failed to load in the sandboxed test environment (network policy);
+  confirmed the system-ui/sans-serif/monospace fallback stacks render
+  cleanly either way — not expected in a normal browser.
