@@ -22,3 +22,8 @@ Guidance for Claude Code (and any other contributor) working in this repository.
 
 When implementing any feature, keep all markup, styles, and scripts inside
 `index.html`.
+
+## Working conventions
+- Before implementing any non-trivial feature, ask clarifying questions about
+  scope, edge cases, and constraints first — don't propose a plan until
+  you've asked.
