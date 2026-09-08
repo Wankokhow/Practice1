@@ -16,15 +16,17 @@ project.
 
 ## Stack & Conventions
 
-**Hard constraints — do not violate these (carried over from the repo's
-established house style; confirm with the user if this project should
-deviate):**
+**Hard constraints — do not violate these:**
 
-1. **Single-file project.** The entire site lives in one `index.html`
-   inside `mini-course/`. All CSS and JavaScript inlined via `<style>` and
-   `<script>` tags — no separate `.css`/`.js` files, no additional `.html`
-   pages. External `<link>`/`<script src>` tags (fonts, CDN libraries) are
-   allowed.
+1. **Single-file project.** The entire project — every lesson section and
+   the navigation between them — must live in one `index.html` file inside
+   `mini-course/`. All CSS and JavaScript must be inlined in that file
+   using `<style>` and `<script>` tags — never in separate `.css` or `.js`
+   files, and never split across additional `.html` pages. Linking to
+   external images, CSS libraries, and JavaScript libraries (e.g. via CDN
+   `<link>`/`<script src>` tags) is allowed. This constraint exists so the
+   finished project can be copy-pasted as a single file for sharing in
+   class and on single-file code platforms (e.g. CodePen, JSFiddle).
 2. **Vanilla only.** Plain HTML/CSS/JS, no frameworks, no build step.
 
 **Folder structure**
