@@ -29,6 +29,25 @@ project.
    class and on single-file code platforms (e.g. CodePen, JSFiddle).
 2. **Vanilla only.** Plain HTML/CSS/JS, no frameworks, no build step.
 
+**Visual design — Direction B: "Modern Minimal" (chosen)**
+- **Fonts**: `Space Grotesk` (headings), `Work Sans` (body/UI), `Space
+  Mono` (numeric/code readouts) — via Google Fonts `<link>` in `<head>`.
+- **Palette**: bg `#fbfbfc`, fg `#1c1f26`, muted `#5b6070` / `#8b909c`,
+  border `#e5e7ec`, accent (indigo) `#3454d1`, accent hover `#26399c`,
+  active-nav-item tint `#eef0fb`.
+- **Look**: cool neutral background, generous whitespace, ~8-10px
+  border-radius on chips/buttons/cards, thin 1px borders, no heavy
+  shadows. Sidebar nav uses numbered circular step markers (outlined =
+  upcoming, filled indigo = active) plus a top progress-dot strip.
+  Primary nav action ("Next lesson") is a filled indigo pill button;
+  "Previous" is plain muted text.
+- Chosen from a 3-direction proposal (Academic Serif / Modern Minimal /
+  Friendly Bold) — reference mockup (for tone/layout, not exact markup):
+  https://claude.ai/code/artifact/fcf3c4eb-504a-4064-9d4a-c3ed09971d18
+  (page "Design", artboard "Mini-Course Site — Modern Minimal"; the two
+  unchosen directions are kept on that canvas's second page for
+  reference).
+
 **Folder structure**
 - `mini-course/index.html` — the whole site.
 - `mini-course/CLAUDE.md` — this file.
