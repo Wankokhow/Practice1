@@ -355,6 +355,22 @@
   .aoa-diagram svg { display: block; width: 100%; height: auto; }
   .aoa-airflow line { stroke: var(--muted); stroke-width: 1.25; opacity: 0.6; }
   .aoa-arrowhead { fill: var(--muted); opacity: 0.6; }
+  .aoa-figures { display: flex; flex-wrap: wrap; gap: 14px; }
+  .aoa-figures .aoa-diagram { flex: 1.6 1 320px; }
+  .aoa-graph { flex: 1 1 240px; }
+  .aoa-graph-title { font-size: 12px; font-weight: 500; margin: 0 0 8px; }
+  .aoa-graph svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .aoa-graph .grid { stroke: var(--border); stroke-width: 1; }
+  .aoa-graph .zero { stroke: var(--muted); stroke-width: 1; opacity: 0.7; }
+  .aoa-graph .tick { fill: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 10px; }
+  .aoa-graph .axis-title { fill: var(--muted); font-size: 10.5px; }
+  .aoa-graph .curve { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+  .aoa-graph .stall { stroke: var(--accent-2); stroke-width: 1.25; stroke-dasharray: 4 3; }
+  .aoa-graph .stall-label { fill: var(--fg); font-size: 10px; }
+  .aoa-graph .current { fill: var(--accent); stroke: var(--card-bg); stroke-width: 2; }
+  .aoa-graph .hover-guide { stroke: var(--muted); stroke-width: 1; opacity: 0.6; }
+  .aoa-graph .hover-label { fill: var(--fg); font-family: 'IBM Plex Mono', monospace; font-size: 10px; }
+  .aoa-graph .hit { fill: transparent; cursor: crosshair; }
   .aoa-lift line { stroke: var(--accent-2); stroke-width: 2.5; }
   .aoa-lift circle, .aoa-lift-head { fill: var(--accent-2); }
   .aoa-lift text { fill: var(--accent-2); font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
@@ -573,7 +589,7 @@
   <div>
     <h2 class="tool-title">Angle of Attack Simulator</h2>
     <p class="tool-subtitle">Explore how an airfoil's angle relative to the oncoming flow changes its behaviour.</p>
-    <p class="aoa-instructions">Drag the <strong>Angle of attack</strong> slider to tilt the airfoil between &minus;5&deg; and 25&deg;. The current angle is shown next to the slider label. The diagram shows the wing cross-section against the oncoming airflow (left to right): a higher angle pitches the nose up, a negative angle pitches it down. The amber arrow is the lift force, acting at the quarter-chord point; it grows with angle until the wing stalls at 15&deg;, then collapses.</p>
+    <p class="aoa-instructions">Drag the <strong>Angle of attack</strong> slider to tilt the airfoil between &minus;5&deg; and 25&deg;. The current angle is shown next to the slider label. The diagram shows the wing cross-section against the oncoming airflow (left to right): a higher angle pitches the nose up, a negative angle pitches it down. The amber arrow is the lift force, acting at the quarter-chord point; it grows with angle until the wing stalls at 15&deg;, then collapses. The lift graph plots C<sub>L</sub> across the whole slider range, with a dot at the current angle.</p>
 
     <div class="tool-layout">
       <div class="tool-sidebar">
@@ -595,6 +611,7 @@
       </div>
 
       <div class="tool-main">
+        <div class="aoa-figures">
         <div class="viz-panel aoa-diagram" data-role="diagram">
           <svg viewBox="0 0 600 260" role="img" aria-label="Wing cross-section tilted against horizontal airflow lines">
             <defs>
@@ -621,6 +638,11 @@
               <text data-role="lift-label">L</text>
             </g>
           </svg>
+        </div>
+        <div class="viz-panel aoa-graph">
+          <p class="aoa-graph-title">Lift coefficient vs angle of attack</p>
+          <svg viewBox="0 0 300 210" data-role="graph" role="img" aria-label="Line graph of lift coefficient against angle of attack from -5 to 25 degrees, peaking at the 15 degree stall angle"></svg>
+        </div>
         </div>
       </div>
     </div>
@@ -1318,6 +1340,86 @@
     }).join(' ') + ' Z';
   }
 
+  // Lift-curve graph geometry, in the graph SVG's 300x210 viewBox.
+  var AOA_GRAPH = {
+    left: 46, right: 290, top: 12, bottom: 172,
+    alphaMin: -5, alphaMax: 25, clMin: -1, clMax: 2
+  };
+
+  function svgEl(tag, attrs, parent) {
+    var el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    Object.keys(attrs).forEach(function (k) { el.setAttribute(k, attrs[k]); });
+    if (parent) parent.appendChild(el);
+    return el;
+  }
+
+  // Builds the static parts of the lift graph (grid, axes, curve, stall line)
+  // and returns setCurrent(alphaDeg) to move the current-position dot.
+  function createLiftGraph(svg) {
+    var g = AOA_GRAPH;
+    function xOf(a) { return g.left + (a - g.alphaMin) / (g.alphaMax - g.alphaMin) * (g.right - g.left); }
+    function yOf(cl) { return g.bottom - (cl - g.clMin) / (g.clMax - g.clMin) * (g.bottom - g.top); }
+
+    for (var cl = g.clMin; cl <= g.clMax; cl += 0.5) {
+      svgEl('line', { 'class': cl === 0 ? 'zero' : 'grid', x1: g.left, x2: g.right, y1: yOf(cl), y2: yOf(cl) }, svg);
+      svgEl('text', { 'class': 'tick', x: g.left - 6, y: yOf(cl) + 3.5, 'text-anchor': 'end' }, svg).textContent = cl.toFixed(1);
+    }
+    for (var a = g.alphaMin; a <= g.alphaMax; a += 5) {
+      svgEl('text', { 'class': 'tick', x: xOf(a), y: g.bottom + 14, 'text-anchor': 'middle' }, svg).textContent = a;
+    }
+    svgEl('text', { 'class': 'axis-title', x: (g.left + g.right) / 2, y: g.bottom + 32, 'text-anchor': 'middle' }, svg)
+      .textContent = 'Angle of attack α (°)';
+    var yTitle = svgEl('text', { 'class': 'axis-title', x: 0, y: 0, 'text-anchor': 'middle',
+      transform: 'translate(9 ' + (g.top + g.bottom) / 2 + ') rotate(-90)' }, svg);
+    yTitle.textContent = 'C';
+    svgEl('tspan', { dy: 3, 'font-size': 8 }, yTitle).textContent = 'L';
+
+    var sx = xOf(AOA_STALL_DEG);
+    svgEl('line', { 'class': 'stall', x1: sx, x2: sx, y1: g.top, y2: g.bottom }, svg);
+    svgEl('text', { 'class': 'stall-label', x: sx + 4, y: g.top + 9 }, svg).textContent = 'stall 15°';
+
+    var d = '';
+    for (var step = 0; step <= (g.alphaMax - g.alphaMin) * 4; step++) {
+      var alpha = g.alphaMin + step / 4;
+      d += (step ? 'L' : 'M') + xOf(alpha).toFixed(1) + ',' + yOf(liftCoefficient(alpha)).toFixed(1);
+    }
+    svgEl('path', { 'class': 'curve', d: d }, svg);
+
+    // Hover: a guide line and readout at the nearest whole degree.
+    var guide = svgEl('line', { 'class': 'hover-guide', y1: g.top, y2: g.bottom, visibility: 'hidden' }, svg);
+    var hoverLabel = svgEl('text', { 'class': 'hover-label', y: g.bottom - 6, visibility: 'hidden' }, svg);
+    var dot = svgEl('circle', { 'class': 'current', r: 5 }, svg);
+    var hit = svgEl('rect', { 'class': 'hit', x: g.left, y: g.top, width: g.right - g.left, height: g.bottom - g.top }, svg);
+
+    hit.addEventListener('pointermove', function (e) {
+      var pt = svg.createSVGPoint();
+      pt.x = e.clientX; pt.y = e.clientY;
+      var local = pt.matrixTransform(svg.getScreenCTM().inverse());
+      var alpha = Math.round(g.alphaMin + (local.x - g.left) / (g.right - g.left) * (g.alphaMax - g.alphaMin));
+      alpha = Math.max(g.alphaMin, Math.min(g.alphaMax, alpha));
+      var x = xOf(alpha);
+      guide.setAttribute('x1', x);
+      guide.setAttribute('x2', x);
+      hoverLabel.textContent = alpha + '°  CL ' + liftCoefficient(alpha).toFixed(2);
+      var flip = x > (g.left + g.right) / 2;
+      hoverLabel.setAttribute('x', flip ? x - 5 : x + 5);
+      hoverLabel.setAttribute('text-anchor', flip ? 'end' : 'start');
+      guide.removeAttribute('visibility');
+      hoverLabel.removeAttribute('visibility');
+    });
+    hit.addEventListener('pointerleave', function () {
+      guide.setAttribute('visibility', 'hidden');
+      hoverLabel.setAttribute('visibility', 'hidden');
+    });
+
+    return {
+      setCurrent: function (alphaDeg) {
+        dot.setAttribute('cx', xOf(alphaDeg));
+        dot.setAttribute('cy', yOf(liftCoefficient(alphaDeg)));
+      }
+    };
+  }
+
   function initAoaTool(root) {
     var slider = root.querySelector('[data-role="angle"]');
     var valueOut = root.querySelector('[data-role="angle-value"]');
@@ -1327,6 +1429,7 @@
     var liftGroup = root.querySelector('[data-role="lift"]');
     var liftLine = root.querySelector('[data-role="lift-line"]');
     var liftLabel = root.querySelector('[data-role="lift-label"]');
+    var liftGraph = createLiftGraph(root.querySelector('[data-role="graph"]'));
 
     // Lift acts at the quarter-chord pivot, which stays fixed as the wing turns.
     liftGroup.querySelector('circle').setAttribute('cx', AOA_PIVOT_X);
@@ -1345,6 +1448,7 @@
       var cl = liftCoefficient(alpha);
       clOut.textContent = cl.toFixed(2);
       stallNote.hidden = alpha <= AOA_STALL_DEG;
+      liftGraph.setCurrent(alpha);
 
       // Lift is perpendicular to the oncoming flow, i.e. vertical here;
       // negative C_L points the arrow down.

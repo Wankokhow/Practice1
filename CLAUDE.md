@@ -120,6 +120,12 @@ full spec.
   (55%) of peak. Vertical amber lift arrow from the quarter-chord pivot,
   length ∝ C_L (points down when negative, hidden when too short for a
   head); C_L readout (2 dp), "Stalled" note past 15°, theory panel.
+- `[x]` **Phase 9 — AoA lift graph**: `createLiftGraph(svg)` builds a
+  C_L-vs-α line chart (−5…25°, C_L −1…2) beside the diagram (wraps below
+  on narrow screens): grid, zero line, dashed amber stall line at 15°,
+  curve sampled every 0.25° from `liftCoefficient`, hover guide + readout
+  at the nearest degree. Returns `setCurrent(α)` to move the dot on
+  slider input.
 
 **Phase one complete.** All 5 phases done; `index.html` ships the full
 portal shell plus both tools.
