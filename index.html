@@ -352,7 +352,16 @@
     max-width: 640px;
   }
 
-  .aoa-diagram { min-height: 260px; }
+  .aoa-diagram svg { display: block; width: 100%; height: auto; }
+  .aoa-airflow line { stroke: var(--muted); stroke-width: 1.25; opacity: 0.6; }
+  .aoa-arrowhead { fill: var(--muted); opacity: 0.6; }
+  .aoa-wing {
+    fill: var(--accent);
+    fill-opacity: 0.22;
+    stroke: var(--accent);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+  }
 
   @media (max-width: 720px) {
     .tool-layout { flex-direction: column; }
@@ -560,7 +569,7 @@
   <div>
     <h2 class="tool-title">Angle of Attack Simulator</h2>
     <p class="tool-subtitle">Explore how an airfoil's angle relative to the oncoming flow changes its behaviour.</p>
-    <p class="aoa-instructions">Drag the <strong>Angle of attack</strong> slider to tilt the airfoil between &minus;5&deg; and 25&deg;. The current angle is shown next to the slider label. The empty diagram area will later show the airfoil and the flow around it.</p>
+    <p class="aoa-instructions">Drag the <strong>Angle of attack</strong> slider to tilt the airfoil between &minus;5&deg; and 25&deg;. The current angle is shown next to the slider label. The diagram shows the wing cross-section against the oncoming airflow (left to right): a higher angle pitches the nose up, a negative angle pitches it down.</p>
 
     <div class="tool-layout">
       <div class="tool-sidebar">
@@ -571,7 +580,23 @@
       </div>
 
       <div class="tool-main">
-        <div class="viz-panel aoa-diagram" data-role="diagram" aria-label="Diagram area (coming soon)"></div>
+        <div class="viz-panel aoa-diagram" data-role="diagram">
+          <svg viewBox="0 0 600 260" role="img" aria-label="Wing cross-section tilted against horizontal airflow lines">
+            <defs>
+              <marker id="aoa-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path class="aoa-arrowhead" d="M0,0 L10,5 L0,10 z"/>
+              </marker>
+            </defs>
+            <g class="aoa-airflow">
+              <line x1="20" y1="40" x2="580" y2="40" marker-end="url(#aoa-arrow)"/>
+              <line x1="20" y1="85" x2="580" y2="85" marker-end="url(#aoa-arrow)"/>
+              <line x1="20" y1="130" x2="580" y2="130" marker-end="url(#aoa-arrow)"/>
+              <line x1="20" y1="175" x2="580" y2="175" marker-end="url(#aoa-arrow)"/>
+              <line x1="20" y1="220" x2="580" y2="220" marker-end="url(#aoa-arrow)"/>
+            </g>
+            <path class="aoa-wing" data-role="wing"/>
+          </svg>
+        </div>
       </div>
     </div>
   </div>
@@ -860,7 +885,7 @@
     {
       id: 'angle-of-attack',
       title: 'Angle of Attack Simulator',
-      description: 'Tilt an airfoil from -5° to 25° (layout only — diagram coming soon).',
+      description: 'Tilt a wing cross-section from -5° to 25° against the oncoming airflow.',
       templateId: 'tpl-aoa',
       init: initAoaTool
     }
@@ -1212,14 +1237,59 @@
     };
   }
 
-  // ---- Angle of Attack tool (layout only; no physics/drawing yet) ----------
+  // ---- Angle of Attack tool (geometry only; no physics yet) -------------
+
+  // Wing placement in the SVG's 600x260 viewBox: chord runs left-to-right
+  // (nose at the left, facing the oncoming flow) and the wing pitches about
+  // its quarter-chord point, the conventional aerodynamic reference.
+  var AOA_CHORD = 300;
+  var AOA_LEADING_EDGE_X = 150;
+  var AOA_CENTER_Y = 130;
+  var AOA_PIVOT_X = AOA_LEADING_EDGE_X + AOA_CHORD / 4;
+
+  // NACA 4-digit airfoil outline (default 2412: 2% camber at 40% chord,
+  // 12% thick) as an SVG path in viewBox coordinates, cosine-spaced points.
+  function nacaAirfoilPath(m, p, t, points) {
+    var upper = [];
+    var lower = [];
+    for (var i = 0; i <= points; i++) {
+      var x = (1 - Math.cos(Math.PI * i / points)) / 2;
+      var yt = 5 * t * (0.2969 * Math.sqrt(x) - 0.1260 * x - 0.3516 * x * x +
+        0.2843 * x * x * x - 0.1036 * x * x * x * x);
+      var yc, dyc;
+      if (x < p) {
+        yc = m / (p * p) * (2 * p * x - x * x);
+        dyc = 2 * m / (p * p) * (p - x);
+      } else {
+        yc = m / ((1 - p) * (1 - p)) * (1 - 2 * p + 2 * p * x - x * x);
+        dyc = 2 * m / ((1 - p) * (1 - p)) * (p - x);
+      }
+      var theta = Math.atan(dyc);
+      upper.push([x - yt * Math.sin(theta), yc + yt * Math.cos(theta)]);
+      lower.push([x + yt * Math.sin(theta), yc - yt * Math.cos(theta)]);
+    }
+    // Trailing edge -> upper surface -> leading edge -> lower surface.
+    var outline = upper.slice().reverse().concat(lower.slice(1));
+    return outline.map(function (pt, idx) {
+      var sx = AOA_LEADING_EDGE_X + pt[0] * AOA_CHORD;
+      var sy = AOA_CENTER_Y - pt[1] * AOA_CHORD; // SVG y grows downward
+      return (idx === 0 ? 'M' : 'L') + sx.toFixed(1) + ',' + sy.toFixed(1);
+    }).join(' ') + ' Z';
+  }
 
   function initAoaTool(root) {
     var slider = root.querySelector('[data-role="angle"]');
     var valueOut = root.querySelector('[data-role="angle-value"]');
+    var wing = root.querySelector('[data-role="wing"]');
+
+    wing.setAttribute('d', nacaAirfoilPath(0.02, 0.4, 0.12, 40));
 
     function update() {
       valueOut.textContent = slider.value + '°';
+      // SVG rotate() is clockwise in y-down space, which lifts the nose
+      // (left end) for a positive angle of attack.
+      wing.setAttribute('transform',
+        'rotate(' + slider.value + ' ' + AOA_PIVOT_X + ' ' + AOA_CENTER_Y + ')');
     }
 
     slider.addEventListener('input', update);
