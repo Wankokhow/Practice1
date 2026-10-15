@@ -355,6 +355,10 @@
   .aoa-diagram svg { display: block; width: 100%; height: auto; }
   .aoa-airflow line { stroke: var(--muted); stroke-width: 1.25; opacity: 0.6; }
   .aoa-arrowhead { fill: var(--muted); opacity: 0.6; }
+  .aoa-lift line { stroke: var(--accent-2); stroke-width: 2.5; }
+  .aoa-lift circle, .aoa-lift-head { fill: var(--accent-2); }
+  .aoa-lift text { fill: var(--accent-2); font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
+  .aoa-stall-note { color: var(--accent-2); }
   .aoa-wing {
     fill: var(--accent);
     fill-opacity: 0.22;
@@ -569,7 +573,7 @@
   <div>
     <h2 class="tool-title">Angle of Attack Simulator</h2>
     <p class="tool-subtitle">Explore how an airfoil's angle relative to the oncoming flow changes its behaviour.</p>
-    <p class="aoa-instructions">Drag the <strong>Angle of attack</strong> slider to tilt the airfoil between &minus;5&deg; and 25&deg;. The current angle is shown next to the slider label. The diagram shows the wing cross-section against the oncoming airflow (left to right): a higher angle pitches the nose up, a negative angle pitches it down.</p>
+    <p class="aoa-instructions">Drag the <strong>Angle of attack</strong> slider to tilt the airfoil between &minus;5&deg; and 25&deg;. The current angle is shown next to the slider label. The diagram shows the wing cross-section against the oncoming airflow (left to right): a higher angle pitches the nose up, a negative angle pitches it down. The amber arrow is the lift force, acting at the quarter-chord point; it grows with angle until the wing stalls at 15&deg;, then collapses.</p>
 
     <div class="tool-layout">
       <div class="tool-sidebar">
@@ -577,6 +581,17 @@
           <div class="field-row"><label for="aoa-angle">Angle of attack</label><span class="mono field-value" data-role="angle-value"></span></div>
           <input type="range" id="aoa-angle" data-role="angle" min="-5" max="25" step="1" value="5">
         </div>
+
+        <div class="field">
+          <div class="field-row"><span>Lift coefficient C<sub>L</sub></span><span class="mono field-value" data-role="cl-value"></span></div>
+          <div class="field-row aoa-stall-note" data-role="stall-note" hidden><span>Stalled &mdash; flow has separated</span></div>
+        </div>
+
+        <details class="theory-panel">
+          <summary>How it works</summary>
+          <p class="mono eq">C<sub>L</sub> &asymp; 2&pi; sin&alpha;&nbsp;&nbsp;(&alpha; &le; 15&deg;)</p>
+          <p class="theory-text">Thin-airfoil theory: lift rises almost linearly with angle of attack while the flow stays attached. Past the stall angle (15&deg; here) the flow separates from the upper surface and lift drops off sharply, levelling out at roughly half its peak. This simplified model treats the wing as a thin symmetric plate, so C<sub>L</sub> is zero at 0&deg;.</p>
+        </details>
       </div>
 
       <div class="tool-main">
@@ -595,6 +610,16 @@
               <line x1="20" y1="220" x2="580" y2="220" marker-end="url(#aoa-arrow)"/>
             </g>
             <path class="aoa-wing" data-role="wing"/>
+            <g class="aoa-lift" data-role="lift">
+              <defs>
+                <marker id="aoa-lift-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto">
+                  <path class="aoa-lift-head" d="M0,0 L10,5 L0,10 z"/>
+                </marker>
+              </defs>
+              <line data-role="lift-line" marker-end="url(#aoa-lift-arrow)"/>
+              <circle r="3.5"/>
+              <text data-role="lift-label">L</text>
+            </g>
           </svg>
         </div>
       </div>
@@ -1247,6 +1272,22 @@
   var AOA_CENTER_Y = 130;
   var AOA_PIVOT_X = AOA_LEADING_EDGE_X + AOA_CHORD / 4;
 
+  var AOA_STALL_DEG = 15;
+  var AOA_POST_STALL_FLOOR = 0.55; // fraction of peak C_L left once fully stalled
+  var AOA_STALL_DECAY_DEG = 1.5;   // how quickly lift collapses past stall
+  var AOA_LIFT_PX_PER_CL = 65;     // arrow length per unit C_L (peak ~106px)
+
+  function radians(deg) { return deg * Math.PI / 180; }
+
+  // Simplified thin-airfoil lift: C_L = 2*pi*sin(alpha) up to stall, then an
+  // exponential drop toward a post-stall plateau (a teaching model, not data).
+  function liftCoefficient(alphaDeg) {
+    if (alphaDeg <= AOA_STALL_DEG) return 2 * Math.PI * Math.sin(radians(alphaDeg));
+    var peak = 2 * Math.PI * Math.sin(radians(AOA_STALL_DEG));
+    var decay = Math.exp(-(alphaDeg - AOA_STALL_DEG) / AOA_STALL_DECAY_DEG);
+    return peak * (AOA_POST_STALL_FLOOR + (1 - AOA_POST_STALL_FLOOR) * decay);
+  }
+
   // NACA 4-digit airfoil outline (default 2412: 2% camber at 40% chord,
   // 12% thick) as an SVG path in viewBox coordinates, cosine-spaced points.
   function nacaAirfoilPath(m, p, t, points) {
@@ -1281,6 +1322,15 @@
     var slider = root.querySelector('[data-role="angle"]');
     var valueOut = root.querySelector('[data-role="angle-value"]');
     var wing = root.querySelector('[data-role="wing"]');
+    var clOut = root.querySelector('[data-role="cl-value"]');
+    var stallNote = root.querySelector('[data-role="stall-note"]');
+    var liftGroup = root.querySelector('[data-role="lift"]');
+    var liftLine = root.querySelector('[data-role="lift-line"]');
+    var liftLabel = root.querySelector('[data-role="lift-label"]');
+
+    // Lift acts at the quarter-chord pivot, which stays fixed as the wing turns.
+    liftGroup.querySelector('circle').setAttribute('cx', AOA_PIVOT_X);
+    liftGroup.querySelector('circle').setAttribute('cy', AOA_CENTER_Y);
 
     wing.setAttribute('d', nacaAirfoilPath(0.02, 0.4, 0.12, 40));
 
@@ -1290,6 +1340,29 @@
       // (left end) for a positive angle of attack.
       wing.setAttribute('transform',
         'rotate(' + slider.value + ' ' + AOA_PIVOT_X + ' ' + AOA_CENTER_Y + ')');
+
+      var alpha = Number(slider.value);
+      var cl = liftCoefficient(alpha);
+      clOut.textContent = cl.toFixed(2);
+      stallNote.hidden = alpha <= AOA_STALL_DEG;
+
+      // Lift is perpendicular to the oncoming flow, i.e. vertical here;
+      // negative C_L points the arrow down.
+      var tipY = AOA_CENTER_Y - cl * AOA_LIFT_PX_PER_CL;
+      liftLine.setAttribute('x1', AOA_PIVOT_X);
+      liftLine.setAttribute('y1', AOA_CENTER_Y);
+      liftLine.setAttribute('x2', AOA_PIVOT_X);
+      liftLine.setAttribute('y2', tipY);
+      // Too short to carry an arrowhead (e.g. at 0 degrees): hide the arrow.
+      if (Math.abs(cl * AOA_LIFT_PX_PER_CL) < 12) {
+        liftLine.setAttribute('visibility', 'hidden');
+        liftLabel.setAttribute('visibility', 'hidden');
+      } else {
+        liftLine.removeAttribute('visibility');
+        liftLabel.removeAttribute('visibility');
+      }
+      liftLabel.setAttribute('x', AOA_PIVOT_X + 10);
+      liftLabel.setAttribute('y', tipY + (cl >= 0 ? 10 : 0));
     }
 
     slider.addEventListener('input', update);
