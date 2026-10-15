@@ -345,9 +345,19 @@
 
   .bernoulli-table tbody tr:last-child td { border-bottom: none; }
 
+  .aoa-instructions {
+    margin: 0 0 16px;
+    font-size: 13px;
+    line-height: 1.55;
+    max-width: 640px;
+  }
+
+  .aoa-diagram { min-height: 260px; }
+
   @media (max-width: 720px) {
     .tool-layout { flex-direction: column; }
     .tool-sidebar { width: 100%; }
+    .tool-main { width: 100%; }
     main.view { padding: 24px 20px 48px; }
     .shell-header { padding: 16px 20px; }
   }
@@ -541,6 +551,27 @@
           <div class="stat-label">Implied &Delta;P (P&#8321; &minus; P&#8322;)</div>
           <div class="mono stat-velocity" data-role="delta-p-out"></div>
         </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="tpl-aoa">
+  <div>
+    <h2 class="tool-title">Angle of Attack Simulator</h2>
+    <p class="tool-subtitle">Explore how an airfoil's angle relative to the oncoming flow changes its behaviour.</p>
+    <p class="aoa-instructions">Drag the <strong>Angle of attack</strong> slider to tilt the airfoil between &minus;5&deg; and 25&deg;. The current angle is shown next to the slider label. The empty diagram area will later show the airfoil and the flow around it.</p>
+
+    <div class="tool-layout">
+      <div class="tool-sidebar">
+        <div class="field">
+          <div class="field-row"><label for="aoa-angle">Angle of attack</label><span class="mono field-value" data-role="angle-value"></span></div>
+          <input type="range" id="aoa-angle" data-role="angle" min="-5" max="25" step="1" value="5">
+        </div>
+      </div>
+
+      <div class="tool-main">
+        <div class="viz-panel aoa-diagram" data-role="diagram" aria-label="Diagram area (coming soon)"></div>
       </div>
     </div>
   </div>
@@ -825,6 +856,13 @@
       description: 'Elevation-aware Bernoulli readouts and a continuity solver.',
       templateId: 'tpl-bernoulli',
       init: initBernoulliTool
+    },
+    {
+      id: 'angle-of-attack',
+      title: 'Angle of Attack Simulator',
+      description: 'Tilt an airfoil from -5° to 25° (layout only — diagram coming soon).',
+      templateId: 'tpl-aoa',
+      init: initAoaTool
     }
   ];
 
@@ -1170,6 +1208,26 @@
       destroy: function () {
         viz.stop();
         window.removeEventListener('resize', onResize);
+      }
+    };
+  }
+
+  // ---- Angle of Attack tool (layout only; no physics/drawing yet) ----------
+
+  function initAoaTool(root) {
+    var slider = root.querySelector('[data-role="angle"]');
+    var valueOut = root.querySelector('[data-role="angle-value"]');
+
+    function update() {
+      valueOut.textContent = slider.value + '°';
+    }
+
+    slider.addEventListener('input', update);
+    update();
+
+    return {
+      destroy: function () {
+        slider.removeEventListener('input', update);
       }
     };
   }

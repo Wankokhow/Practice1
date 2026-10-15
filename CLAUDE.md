@@ -104,5 +104,11 @@ full spec.
   browser, so the theme-toggle icon never appeared — switched to explicit
   `setAttribute`/`removeAttribute`.
 
+- `[x]` **Phase 6 — Angle of Attack Simulator (layout only)**: third
+  registry entry (`#angle-of-attack`, `tpl-aoa`, `initAoaTool`) with an
+  instruction paragraph, an empty bordered diagram box, and an "Angle of
+  attack" slider (-5° to 25°, step 1, default 5°) plus a live value
+  readout. No physics or drawing yet.
+
 **Phase one complete.** All 5 phases done; `index.html` ships the full
 portal shell plus both tools.
