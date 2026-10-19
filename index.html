@@ -1,1262 +1,344 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fluid Dynamics Lab</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S220 Lab Portal</title>
+
+<!-- Apply the saved (or OS) theme before first paint to avoid a flash. -->
+<script>
+  (function () {
+    var saved = null;
+    try { saved = localStorage.getItem('s220-theme'); } catch (e) {}
+    var dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (dark) document.documentElement.classList.add('dark');
+  })();
+</script>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.18/dist/index.global.js"></script>
+<!-- Theme tokens live in CSS variables (below) so one Tailwind class covers both themes. -->
+<style type="text/tailwindcss">
+  @custom-variant dark (&:where(.dark, .dark *));
+  @theme inline {
+    --color-bg: var(--bg);
+    --color-surface: var(--surface);
+    --color-line: var(--line);
+    --color-fg: var(--fg);
+    --color-muted: var(--muted);
+    --color-accent: var(--accent);
+    --color-accent-ink: var(--accent-ink);
+    --color-on-accent: var(--on-accent);
+    --color-steel: var(--steel);
+    --font-display: "Barlow Condensed", sans-serif;
+    --font-sans: Barlow, sans-serif;
+    --font-mono: "JetBrains Mono", monospace;
+  }
+</style>
 <style>
   :root {
-    --bg: #fafbfc;
-    --fg: #1a2027;
-    --muted: #5b6670;
-    --card-bg: #ffffff;
-    --border: #d7dee5;
-    --accent: #3b9aa8;
-    --accent-2: #b5791f;
-    --grid-line: #eef1f4;
+    --bg: #f4f5f6; --surface: #ffffff; --line: #d3d8dc;
+    --fg: #16181a; --muted: #555d64;
+    --accent: #f08a24; --accent-ink: #b35c00; --on-accent: #16181a;
+    --steel: #2f6aa3;
+    color-scheme: light;
   }
-
-  :root[data-theme="dark"] {
-    --bg: #14181c;
-    --fg: #e7ecf0;
-    --muted: #8a97a1;
-    --card-bg: #1b2126;
-    --border: #2b333a;
-    --accent: #3b9aa8;
-    --accent-2: #b5791f;
-    --grid-line: #1d2328;
+  .dark {
+    --bg: #16181a; --surface: #202326; --line: #34383c;
+    --fg: #eceff1; --muted: #a3aab0;
+    --accent: #f08a24; --accent-ink: #f5a04f; --on-accent: #16181a;
+    --steel: #7fb2e5;
+    color-scheme: dark;
   }
-
-  * { box-sizing: border-box; }
-
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--fg);
-    font-family: 'IBM Plex Sans', sans-serif;
-    background-image:
-      linear-gradient(var(--grid-line) 1px, transparent 1px),
-      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-    background-size: 24px 24px;
-  }
-
-  a { color: var(--accent); }
-  a:hover { color: var(--accent-2); }
-
-  .mono { font-family: 'IBM Plex Mono', monospace; }
-
-  .shell-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px 40px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .shell-header h1 {
-    font-size: 20px;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    margin: 0;
-  }
-
-  .shell-nav {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .btn {
-    font: inherit;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--fg);
-    background: transparent;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 8px 14px;
-    cursor: pointer;
-  }
-
-  .btn:hover { border-color: var(--accent); color: var(--accent); }
-
-  .icon-btn {
-    width: 34px;
-    height: 34px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-  }
-
-  .icon-btn svg { stroke: var(--fg); }
-
-  main.view { max-width: 1100px; margin: 0 auto; padding: 32px 40px 60px; }
-
-  .section-label {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 12px;
-  }
-
-  .tool-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 18px;
-  }
-
-  .tool-card {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 20px;
-    border: 1px solid var(--border);
-    border-radius: 5px;
-    background: var(--card-bg);
-    text-align: left;
-    cursor: pointer;
-    font: inherit;
-    color: inherit;
-  }
-
-  .tool-card:hover { border-color: var(--accent); }
-
-  .tool-card .card-icon svg { stroke: var(--accent); }
-
-  .tool-card .card-title {
-    font-size: 15px;
-    font-weight: 600;
-  }
-
-  .tool-card .card-desc {
-    font-size: 12.5px;
-    color: var(--muted);
-    line-height: 1.4;
-  }
-
-  .tool-card.placeholder {
-    align-items: center;
-    justify-content: center;
-    border-style: dashed;
-    color: var(--muted);
-    cursor: default;
-  }
-
-  .tool-card.placeholder:hover { border-color: var(--border); }
-
-  #back-btn { margin-bottom: 20px; }
-
-  .tool-layout {
-    display: flex;
-    gap: 20px;
-    align-items: flex-start;
-  }
-
-  .tool-sidebar {
-    width: 260px;
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    padding: 18px;
-    border: 1px solid var(--border);
-    border-radius: 5px;
-    background: var(--card-bg);
-  }
-
-  .tool-main {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-
-  .viz-panel {
-    padding: 18px;
-    border: 1px solid var(--border);
-    border-radius: 5px;
-    background: var(--card-bg);
-  }
-
-  .theory-panel {
-    border: 1px solid var(--border);
-    border-radius: 5px;
-    background: var(--card-bg);
-    padding: 14px 16px;
-  }
-
-  .theory-panel summary {
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    list-style: none;
-  }
-
-  .theory-panel summary::-webkit-details-marker { display: none; }
-
-  .theory-panel .eq {
-    font-size: 12.5px;
-    margin: 10px 0;
-  }
-
-  .theory-panel .theory-text {
-    font-size: 12.5px;
-    color: var(--muted);
-    line-height: 1.5;
-    margin: 10px 0 0;
-  }
-
-  .tool-title { margin: 0 0 4px; font-size: 19px; font-weight: 600; }
-  .tool-subtitle { margin: 0 0 20px; color: var(--muted); font-size: 13px; }
-
-  .segmented {
-    display: flex;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-
-  .segmented-btn {
-    flex: 1;
-    text-align: center;
-    padding: 7px 0;
-    font: inherit;
-    font-size: 12px;
-    font-weight: 500;
-    background: transparent;
-    color: var(--fg);
-    border: none;
-    cursor: pointer;
-  }
-
-  .segmented-btn.active { background: var(--accent); color: #fff; }
-
-  .field { display: flex; flex-direction: column; gap: 6px; }
-
-  .field-row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 12px;
-  }
-
-  .field-value { color: var(--accent); }
-
-  input[type="range"] { accent-color: var(--accent); width: 100%; }
-
-  select, input[type="number"] {
-    font: inherit;
-    font-size: 12.5px;
-    padding: 7px 10px;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    background: var(--card-bg);
-    color: var(--fg);
-    width: 100%;
-  }
-
-  .stat-row {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 14px;
-  }
-
-  .stat-card {
-    padding: 14px;
-    border: 1px solid var(--border);
-    border-radius: 5px;
-    background: var(--card-bg);
-  }
-
-  .stat-card.highlight { border-color: var(--accent); }
-
-  .stat-label {
-    font-size: 11px;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-
-  .stat-velocity { font-size: 15px; margin-top: 6px; color: var(--accent); }
-  .stat-pressure { font-size: 13px; margin-top: 2px; color: var(--accent-2); }
-
-  .viz-panel { position: relative; }
-
-  .field-inline {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-  }
-
-  .field-inline input[type="radio"] { accent-color: var(--accent); }
-
-  input[type="number"]:disabled {
-    color: var(--accent);
-    font-family: 'IBM Plex Mono', monospace;
-    border-color: var(--accent);
-  }
-
-  .elevation-label {
-    position: absolute;
-    top: 10px;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
-    color: var(--muted);
-    background: var(--card-bg);
-    padding: 2px 6px;
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    z-index: 1;
-  }
-
-  .elevation-label.left { left: 14px; }
-  .elevation-label.right { right: 14px; }
-
-  .bernoulli-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12.5px;
-    border: 1px solid var(--border);
-    border-radius: 5px;
-    overflow: hidden;
-    background: var(--card-bg);
-  }
-
-  .bernoulli-table th, .bernoulli-table td {
-    text-align: left;
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .bernoulli-table th {
-    color: var(--muted);
-    font-weight: 500;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
-  .bernoulli-table tbody tr:last-child td { border-bottom: none; }
-
-  @media (max-width: 720px) {
-    .tool-layout { flex-direction: column; }
-    .tool-sidebar { width: 100%; }
-    main.view { padding: 24px 20px 48px; }
-    .shell-header { padding: 16px 20px; }
-  }
-
-  [hidden] { display: none !important; }
 </style>
 </head>
-<body>
+<body class="bg-bg text-fg font-sans antialiased min-h-screen">
 
-<header class="shell-header">
-  <h1>Fluid Dynamics Lab</h1>
-  <nav class="shell-nav">
-    <button class="btn" id="home-btn" type="button">Home</button>
-    <button class="btn icon-btn" id="theme-toggle" type="button" aria-label="Toggle theme">
-      <svg id="theme-icon-dark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" hidden>
-        <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/>
-      </svg>
-      <svg id="theme-icon-light" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" hidden>
-        <circle cx="12" cy="12" r="4.5"/>
-        <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>
-      </svg>
+<header class="sticky top-0 z-10 bg-bg border-b-2 border-accent">
+  <div class="max-w-5xl mx-auto flex items-center justify-between gap-3 px-4 py-3">
+    <a href="#/" class="flex items-center gap-2.5 min-h-[44px]" aria-label="S220 Lab Portal home">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="text-accent shrink-0" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 12l5-4M12 3v2M3 12h2M19 12h2"/></svg>
+      <span class="font-display font-bold text-[22px] tracking-wider uppercase leading-none">S220 Lab Portal</span>
+    </a>
+    <button id="theme-toggle" type="button" class="w-11 h-11 flex items-center justify-center border border-line bg-surface rounded-[2px] hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent" aria-label="Toggle light or dark theme">
+      <svg class="dark:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      <svg class="hidden dark:block" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/></svg>
     </button>
-  </nav>
+  </div>
 </header>
 
-<main id="home-view" class="view">
-  <div class="section-label">Tool library</div>
-  <div id="tool-grid" class="tool-grid"></div>
-</main>
+<main class="max-w-5xl mx-auto px-4 py-5">
 
-<main id="tool-view" class="view" hidden>
-  <button class="btn" id="back-btn" type="button">&larr; Back to all tools</button>
-  <div id="tool-mount"></div>
-</main>
+  <!-- Home view: catalogue with search + filters -->
+  <section id="view-home" aria-labelledby="home-title">
+    <h1 id="home-title" class="font-display font-semibold text-[34px] leading-tight uppercase tracking-wide">
+      Tools &amp; lessons <span class="text-accent-ink" id="item-count"></span>
+    </h1>
 
-<!-- Per-tool templates. Each is inert markup until cloned into #tool-mount. -->
+    <label class="mt-4 flex items-center gap-2 h-12 px-3 bg-surface border border-line rounded-[2px] focus-within:border-accent">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="text-muted shrink-0" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+      <span class="sr-only">Search tools and lessons</span>
+      <input id="search" type="search" placeholder="Search tools and lessons" autocomplete="off" class="flex-1 min-w-0 bg-transparent text-base text-fg placeholder:text-muted outline-none">
+    </label>
 
-<template id="tpl-venturi">
-  <div>
-    <h2 class="tool-title">Venturi Tube</h2>
-    <p class="tool-subtitle">Ideal, frictionless flow through a symmetric venturi section (elevation change assumed zero).</p>
-
-    <div class="tool-layout">
-      <div class="tool-sidebar">
-        <div class="segmented">
-          <button type="button" class="segmented-btn active" data-role="mode-convergent">Convergent</button>
-          <button type="button" class="segmented-btn" data-role="mode-divergent">Divergent</button>
-        </div>
-
-        <div class="field">
-          <div class="field-row"><span>Throat diameter</span><span class="mono field-value" data-role="throat-diameter-value"></span></div>
-          <input type="range" data-role="throat-diameter" min="10" max="35" step="1" value="18">
-        </div>
-
-        <div class="field">
-          <div class="field-row"><span>Inlet velocity</span><span class="mono field-value" data-role="inlet-velocity-value"></span></div>
-          <input type="range" data-role="inlet-velocity" min="0.5" max="5" step="0.1" value="2.4">
-        </div>
-
-        <div class="field">
-          <div class="field-row"><span>Fluid</span></div>
-          <select data-role="fluid-select">
-            <option value="water">Water</option>
-            <option value="air">Air</option>
-            <option value="oil">Oil</option>
-            <option value="custom">Custom&hellip;</option>
-          </select>
-        </div>
-
-        <div class="field" data-role="custom-density-wrap" hidden>
-          <div class="field-row"><span>Density</span><span class="mono field-value" data-role="custom-density-value"></span></div>
-          <input type="number" data-role="custom-density-input" min="0.1" step="1" value="1000">
-        </div>
-
-        <details class="theory-panel">
-          <summary>How it works</summary>
-          <p class="mono eq">Continuity:&nbsp; A&#8321;V&#8321; = A&#8322;V&#8322;</p>
-          <p class="mono eq">Bernoulli (h&#8321;=h&#8322;=0):&nbsp; P&#8321; + &#189;&rho;V&#8321;&sup2; = P&#8322; + &#189;&rho;V&#8322;&sup2;</p>
-          <p class="theory-text" data-role="theory-text"></p>
-        </details>
-      </div>
-
-      <div class="tool-main">
-        <div class="viz-panel">
-          <canvas data-role="canvas" style="width:100%; height:180px; display:block;"></canvas>
-        </div>
-        <div class="stat-row">
-          <div class="stat-card" data-role="stat-inlet">
-            <div class="stat-label">Inlet</div>
-            <div class="mono stat-velocity" data-role="inlet-velocity-out"></div>
-            <div class="mono stat-pressure" data-role="inlet-pressure-out"></div>
-          </div>
-          <div class="stat-card highlight" data-role="stat-throat">
-            <div class="stat-label">Throat</div>
-            <div class="mono stat-velocity" data-role="throat-velocity-out"></div>
-            <div class="mono stat-pressure" data-role="throat-pressure-out"></div>
-          </div>
-          <div class="stat-card" data-role="stat-outlet">
-            <div class="stat-label">Outlet</div>
-            <div class="mono stat-velocity" data-role="outlet-velocity-out"></div>
-            <div class="mono stat-pressure" data-role="outlet-pressure-out"></div>
-          </div>
-        </div>
-      </div>
+    <div class="mt-4 flex flex-col gap-2">
+      <div id="type-filters" class="flex flex-wrap gap-2" role="group" aria-label="Filter by type"></div>
+      <div id="topic-filters" class="flex flex-wrap gap-2" role="group" aria-label="Filter by topic"></div>
     </div>
+
+    <p id="results-status" class="sr-only" aria-live="polite"></p>
+    <div id="card-grid" class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
+
+    <div id="empty-state" class="mt-5 border border-dashed border-line rounded-[2px] p-6 text-center" hidden>
+      <p class="text-muted">No tools or lessons match.</p>
+      <button id="clear-filters" type="button" class="mt-3 h-11 px-4 border border-line bg-surface rounded-[2px] font-display font-semibold uppercase tracking-wider hover:border-accent">Clear search &amp; filters</button>
+    </div>
+  </section>
+
+  <!-- Item view: the selected tool or lesson is mounted into #item-mount -->
+  <section id="view-item" hidden>
+    <a href="#/" class="inline-flex items-center gap-1.5 min-h-[44px] text-muted hover:text-fg">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+      All tools &amp; lessons
+    </a>
+    <div class="mt-2 flex justify-between font-mono text-xs uppercase" id="item-meta"></div>
+    <h1 id="item-title" tabindex="-1" class="mt-1 font-display font-semibold text-[32px] leading-tight uppercase tracking-wide outline-none"></h1>
+    <div id="item-mount" class="mt-4"></div>
+  </section>
+</main>
+
+<!-- ===== Item templates (one per catalogue entry) ===== -->
+
+<template id="tpl-rankine-explainer">
+  <div class="bg-surface border border-line rounded-[2px] p-4">
+    <p class="text-muted">Placeholder — the interactive schematic, walkthrough, T–s diagram and quiz arrive in Phase 4.</p>
+    <p class="mt-3 font-mono text-sm">Mounted for <span data-role="uptime" class="text-accent-ink">0</span> s</p>
   </div>
 </template>
 
-<template id="tpl-bernoulli">
-  <div>
-    <h2 class="tool-title">Bernoulli / Continuity</h2>
-    <p class="tool-subtitle">Pick one quantity to solve for; the other three drive it via continuity. Elevation change feeds Bernoulli's equation independently of speed.</p>
-
-    <div class="tool-layout">
-      <div class="tool-sidebar">
-        <div class="field">
-          <div class="field-row"><span>Solve for</span></div>
-          <label class="field-inline"><input type="radio" name="solve-target" data-role="solve-d1" value="d1"> D&#8321; (inlet diameter)</label>
-          <label class="field-inline"><input type="radio" name="solve-target" data-role="solve-v1" value="v1"> V&#8321; (inlet velocity)</label>
-          <label class="field-inline"><input type="radio" name="solve-target" data-role="solve-d2" value="d2"> D&#8322; (outlet diameter)</label>
-          <label class="field-inline"><input type="radio" name="solve-target" data-role="solve-v2" value="v2" checked> V&#8322; (outlet velocity)</label>
-        </div>
-
-        <div class="field">
-          <div class="field-row"><span>D&#8321; (mm)</span></div>
-          <input type="number" data-role="d1-input" min="1" step="1" value="40">
-        </div>
-        <div class="field">
-          <div class="field-row"><span>V&#8321; (m/s)</span></div>
-          <input type="number" data-role="v1-input" min="0" step="0.1" value="2.4">
-        </div>
-        <div class="field">
-          <div class="field-row"><span>D&#8322; (mm)</span></div>
-          <input type="number" data-role="d2-input" min="1" step="1" value="25">
-        </div>
-        <div class="field">
-          <div class="field-row"><span>V&#8322; (m/s)</span></div>
-          <input type="number" data-role="v2-input" min="0" step="0.1" value="0" disabled>
-        </div>
-
-        <div class="field">
-          <div class="field-row"><span>Elevation h&#8321; (m)</span></div>
-          <input type="number" data-role="h1-input" step="0.1" value="0">
-        </div>
-        <div class="field">
-          <div class="field-row"><span>Elevation h&#8322; (m)</span></div>
-          <input type="number" data-role="h2-input" step="0.1" value="0">
-        </div>
-
-        <div class="field">
-          <div class="field-row"><span>Fluid</span></div>
-          <select data-role="fluid-select">
-            <option value="water">Water</option>
-            <option value="air">Air</option>
-            <option value="oil">Oil</option>
-            <option value="custom">Custom&hellip;</option>
-          </select>
-        </div>
-
-        <div class="field" data-role="custom-density-wrap" hidden>
-          <div class="field-row"><span>Density</span><span class="mono field-value" data-role="custom-density-value"></span></div>
-          <input type="number" data-role="custom-density-input" min="0.1" step="1" value="1000">
-        </div>
-
-        <details class="theory-panel">
-          <summary>How it works</summary>
-          <p class="mono eq">Continuity:&nbsp; A&#8321;V&#8321; = A&#8322;V&#8322;</p>
-          <p class="mono eq">Bernoulli:&nbsp; P&#8321; + &#189;&rho;V&#8321;&sup2; + &rho;gh&#8321; = P&#8322; + &#189;&rho;V&#8322;&sup2; + &rho;gh&#8322;</p>
-          <p class="theory-text">Pick which quantity to solve for above, then edit the other three &mdash; continuity fills the last one in automatically. Elevation (h) shifts the pressure balance independently of speed: raising the outlet (h&#8322;) trades away some of the pressure recovery a change in pipe size would otherwise give back.</p>
-        </details>
-      </div>
-
-      <div class="tool-main">
-        <div class="viz-panel">
-          <span class="elevation-label left" data-role="h1-label"></span>
-          <span class="elevation-label right" data-role="h2-label"></span>
-          <canvas data-role="canvas" style="width:100%; height:180px; display:block;"></canvas>
-        </div>
-
-        <table class="bernoulli-table">
-          <thead>
-            <tr><th>Station</th><th>Velocity</th><th>Dynamic &frac12;&rho;V&sup2;</th><th>Hydrostatic &rho;gh</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>1 (inlet)</td><td class="mono" data-role="v1-out"></td><td class="mono" data-role="dyn1-out"></td><td class="mono" data-role="hydro1-out"></td></tr>
-            <tr><td>2 (outlet)</td><td class="mono" data-role="v2-out"></td><td class="mono" data-role="dyn2-out"></td><td class="mono" data-role="hydro2-out"></td></tr>
-          </tbody>
-        </table>
-
-        <div class="stat-card">
-          <div class="stat-label">Implied &Delta;P (P&#8321; &minus; P&#8322;)</div>
-          <div class="mono stat-velocity" data-role="delta-p-out"></div>
-        </div>
-      </div>
-    </div>
+<template id="tpl-turbine-performance">
+  <div class="bg-surface border border-line rounded-[2px] p-4">
+    <p class="text-muted">Placeholder — single-reading and test-table modes arrive in Phase 3.</p>
+    <p class="mt-3 font-mono text-sm">Mounted for <span data-role="uptime" class="text-accent-ink">0</span> s</p>
   </div>
 </template>
 
 <script>
-(function () {
-  'use strict';
-
-  // ---- Theme module ----------------------------------------------------
-
-  var THEME_KEY = 'fdl-theme';
-
-  function setHidden(el, hidden) {
-    // el.hidden = ... doesn't reliably reflect to the "hidden" content
-    // attribute on <svg> elements in every browser, so set it directly.
-    if (hidden) el.setAttribute('hidden', '');
-    else el.removeAttribute('hidden');
-  }
-
-  function applyTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem(THEME_KEY, theme);
-    setHidden(document.getElementById('theme-icon-dark'), theme !== 'dark');
-    setHidden(document.getElementById('theme-icon-light'), theme === 'dark');
-  }
-
-  function initialTheme() {
-    var stored = localStorage.getItem(THEME_KEY);
-    if (stored === 'light' || stored === 'dark') return stored;
-    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-      ? 'dark'
-      : 'light';
-  }
-
-  document.getElementById('theme-toggle').addEventListener('click', function () {
-    var current = document.documentElement.getAttribute('data-theme');
-    applyTheme(current === 'dark' ? 'light' : 'dark');
-  });
-
-  // ---- Physics module (pure functions, no DOM) --------------------------
-
-  var Physics = {
-    areaFromDiameter: function (d) {
-      return Math.PI * Math.pow(d / 2, 2);
-    },
-
-    continuityVelocity: function (A1, V1, A2) {
-      return (A1 * V1) / A2;
-    },
-
-    // Fills in whichever single field of {A1,V1,A2,V2} is null/undefined
-    // using A1*V1 = A2*V2. Returns null if zero or more than one field is
-    // unknown (under/over-determined).
-    solveContinuity: function (fields) {
-      var keys = ['A1', 'V1', 'A2', 'V2'];
-      var unknown = null;
-      for (var i = 0; i < keys.length; i++) {
-        var k = keys[i];
-        if (fields[k] === null || fields[k] === undefined || fields[k] === '') {
-          if (unknown !== null) return null; // more than one unknown
-          unknown = k;
-        }
-      }
-      if (unknown === null) return null; // nothing to solve for
-
-      var A1 = fields.A1, V1 = fields.V1, A2 = fields.A2, V2 = fields.V2;
-      var result = { A1: A1, V1: V1, A2: A2, V2: V2 };
-      if (unknown === 'A1') result.A1 = (A2 * V2) / V1;
-      else if (unknown === 'V1') result.V1 = (A2 * V2) / A1;
-      else if (unknown === 'A2') result.A2 = (A1 * V1) / V2;
-      else if (unknown === 'V2') result.V2 = (A1 * V1) / A2;
-      return result;
-    },
-
-    // Bernoulli: P1 + 1/2 rho V1^2 + rho g h1 = P2 + 1/2 rho V2^2 + rho g h2
-    // Returns the dynamic and hydrostatic pressure terms at one station.
-    bernoulliTerms: function (rho, V, h, g) {
-      g = g === undefined ? 9.81 : g;
-      return {
-        dynamic: 0.5 * rho * V * V,
-        hydrostatic: rho * g * h
-      };
-    }
-  };
-
-  var FLUID_PRESETS = {
-    water: { label: 'Water', density: 1000 },
-    air: { label: 'Air', density: 1.225 },
-    oil: { label: 'Oil', density: 900 }
-  };
-
-  // ---- Pipe geometry helpers ---------------------------------------------
-
-  function clamp(v, min, max) {
-    return Math.min(max, Math.max(min, v));
-  }
-
-  function smoothstep(t) {
-    t = clamp(t, 0, 1);
-    return t * t * (3 - 2 * t);
-  }
-
-  // Blends from rBefore to rAfter as x moves from xStart to xEnd, flat
-  // outside that range. x, xStart, xEnd are in normalized pipe-length
-  // space [0,1]; r values are normalized half-widths (fraction of the
-  // viz's available half-height).
-  var PipeGeometry = {
-    smoothTaper: function (x, xStart, xEnd, rBefore, rAfter) {
-      var t = (x - xStart) / (xEnd - xStart);
-      return rBefore + (rAfter - rBefore) * smoothstep(t);
-    }
-  };
-
-  // ---- Shared pipe-flow visualization component --------------------------
-  //
-  // A factory, not a class: createPipeFlowViz(canvas, options) returns a
-  // controller. Both the Venturi tool and the Bernoulli/Continuity tool
-  // create their own instance, each supplying its own getProfile()/
-  // getInletVelocity() closures over its own current input state -- the
-  // draw/animate code itself is never duplicated between them.
-  //
-  // options:
-  //   getProfile()        -> { radiusFn(x) } for x in [0,1], radiusFn
-  //                          returns a normalized half-width in (0, 1]
-  //   getInletVelocity()  -> current inlet velocity (any positive unit;
-  //                          only relative speed across x matters visually)
-  //   particleCount        (default 18)
-  //   colorFn(speedFactor) -> css color string; speedFactor is the local
-  //                          speed relative to the inlet speed (1 = inlet)
-
-  function createPipeFlowViz(canvas, options) {
-    var ctx = canvas.getContext('2d');
-    var particleCount = options.particleCount || 18;
-    var colorFn = options.colorFn || defaultColorFn;
-    var profile = options.getProfile;
-    var BASE_SPEED = 0.12; // normalized pipe-lengths per second at speedFactor 1
-
-    var particles = [];
-    for (var i = 0; i < particleCount; i++) {
-      particles.push({
-        x: i / particleCount,
-        lane: (Math.random() * 2 - 1) * 0.7
-      });
-    }
-
-    var rafId = null;
-    var lastTime = null;
-
-    function defaultColorFn(speedFactor) {
-      // Slow = accent teal, fast = accent amber (matches the portal's
-      // two accent colors rather than an unrelated blue/red scale).
-      var t = clamp((speedFactor - 1) / 4, 0, 1);
-      var slow = [59, 154, 168];
-      var fast = [181, 121, 31];
-      var c = slow.map(function (s, idx) {
-        return Math.round(s + (fast[idx] - s) * t);
-      });
-      return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
-    }
-
-    function speedFactorAt(x) {
-      var p = profile();
-      var r0 = p.radiusFn(0);
-      var rX = p.radiusFn(x);
-      return (r0 * r0) / (rX * rX);
-    }
-
-    function resize() {
-      var rect = canvas.getBoundingClientRect();
-      var dpr = window.devicePixelRatio || 1;
-      canvas.width = Math.max(1, Math.round(rect.width * dpr));
-      canvas.height = Math.max(1, Math.round(rect.height * dpr));
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    }
-
-    function draw() {
-      var rect = canvas.getBoundingClientRect();
-      var w = rect.width;
-      var h = rect.height;
-      var centerY = h / 2;
-      var scaleY = (h / 2) * 0.9;
-      var p = profile();
-
-      ctx.clearRect(0, 0, w, h);
-
-      // Pipe walls.
-      ctx.beginPath();
-      var steps = 60;
-      for (var i = 0; i <= steps; i++) {
-        var x = i / steps;
-        var y = centerY - p.radiusFn(x) * scaleY;
-        if (i === 0) ctx.moveTo(x * w, y);
-        else ctx.lineTo(x * w, y);
-      }
-      for (var i2 = steps; i2 >= 0; i2--) {
-        var x2 = i2 / steps;
-        var y2 = centerY + p.radiusFn(x2) * scaleY;
-        ctx.lineTo(x2 * w, y2);
-      }
-      ctx.closePath();
-      var wallColor = getComputedStyle(canvas).getPropertyValue('--fg').trim() || '#1a2027';
-      ctx.strokeStyle = wallColor;
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Particles.
-      for (var j = 0; j < particles.length; j++) {
-        var particle = particles[j];
-        var r = p.radiusFn(particle.x);
-        var py = centerY + particle.lane * r * scaleY;
-        var px = particle.x * w;
-        var speedFactor = speedFactorAt(particle.x);
-        ctx.beginPath();
-        ctx.fillStyle = colorFn(speedFactor);
-        ctx.ellipse(px, py, 3 + clamp(speedFactor - 1, 0, 3) * 1.2, 2.5, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
-    function step(timestamp) {
-      if (lastTime === null) lastTime = timestamp;
-      var dt = (timestamp - lastTime) / 1000;
-      lastTime = timestamp;
-
-      var velocity = options.getInletVelocity ? options.getInletVelocity() : 1;
-
-      for (var i = 0; i < particles.length; i++) {
-        var particle = particles[i];
-        var speedFactor = speedFactorAt(particle.x);
-        particle.x += velocity * speedFactor * BASE_SPEED * dt;
-        if (particle.x > 1) {
-          particle.x -= 1;
-          particle.lane = (Math.random() * 2 - 1) * 0.7;
-        }
-      }
-
-      draw();
-      rafId = requestAnimationFrame(step);
-    }
-
-    resize();
-    draw();
-
-    return {
-      start: function () {
-        if (rafId !== null) return;
-        lastTime = null;
-        rafId = requestAnimationFrame(step);
-      },
-      stop: function () {
-        if (rafId !== null) {
-          cancelAnimationFrame(rafId);
-          rafId = null;
-        }
-      },
-      resize: function () {
-        resize();
-        draw();
-      },
-      setProfile: function (profileFn) {
-        profile = profileFn;
-      }
-    };
-  }
-
-  // ---- Tool registry -----------------------------------------------------
-  // Adding a future tool: write its <template>, write its init function,
-  // push one entry here. Nothing else in the shell changes.
-
-  var TOOL_REGISTRY = [
-    {
-      id: 'venturi-tube',
-      title: 'Venturi Tube',
-      description: 'Convergent & divergent flow, animated particles, live velocity/pressure.',
-      templateId: 'tpl-venturi',
-      init: initVenturiTool
-    },
-    {
-      id: 'bernoulli-continuity',
-      title: 'Bernoulli / Continuity',
-      description: 'Elevation-aware Bernoulli readouts and a continuity solver.',
-      templateId: 'tpl-bernoulli',
-      init: initBernoulliTool
-    }
-  ];
-
-  var VENTURI_D_INLET = 0.04; // m, fixed preset (inlet diameter == outlet diameter)
-  var VENTURI_P_REF = 101325; // Pa, assumed reference pressure at inlet/outlet
-
-  var VENTURI_THEORY = {
-    convergent: 'As the pipe narrows toward the throat, continuity requires the flow to speed up. ' +
-      'Bernoulli’s equation then requires pressure to drop — this converging section converts ' +
-      'pressure energy into kinetic energy.',
-    divergent: 'As the pipe widens back out after the throat, the flow slows back down and pressure ' +
-      'recovers accordingly. Real diffusers recover pressure less completely than this ideal model, ' +
-      'due to friction and flow separation not modeled here.'
-  };
-
-  function initVenturiTool(root) {
-    var el = {
-      modeConvergent: root.querySelector('[data-role="mode-convergent"]'),
-      modeDivergent: root.querySelector('[data-role="mode-divergent"]'),
-      throatSlider: root.querySelector('[data-role="throat-diameter"]'),
-      throatValue: root.querySelector('[data-role="throat-diameter-value"]'),
-      velocitySlider: root.querySelector('[data-role="inlet-velocity"]'),
-      velocityValue: root.querySelector('[data-role="inlet-velocity-value"]'),
-      fluidSelect: root.querySelector('[data-role="fluid-select"]'),
-      customDensityWrap: root.querySelector('[data-role="custom-density-wrap"]'),
-      customDensityInput: root.querySelector('[data-role="custom-density-input"]'),
-      customDensityValue: root.querySelector('[data-role="custom-density-value"]'),
-      theoryText: root.querySelector('[data-role="theory-text"]'),
-      canvas: root.querySelector('[data-role="canvas"]'),
-      inletV: root.querySelector('[data-role="inlet-velocity-out"]'),
-      inletP: root.querySelector('[data-role="inlet-pressure-out"]'),
-      throatV: root.querySelector('[data-role="throat-velocity-out"]'),
-      throatP: root.querySelector('[data-role="throat-pressure-out"]'),
-      outletV: root.querySelector('[data-role="outlet-velocity-out"]'),
-      outletP: root.querySelector('[data-role="outlet-pressure-out"]')
-    };
-
-    var state = {
-      mode: 'convergent',
-      throatDiameterMm: parseFloat(el.throatSlider.value),
-      inletVelocity: parseFloat(el.velocitySlider.value),
-      fluidKey: 'water',
-      customDensity: parseFloat(el.customDensityInput.value)
-    };
-
-    function currentDensity() {
-      if (state.fluidKey === 'custom') return state.customDensity;
-      return FLUID_PRESETS[state.fluidKey].density;
-    }
-
-    function compute() {
-      var aInlet = Physics.areaFromDiameter(VENTURI_D_INLET);
-      var aThroat = Physics.areaFromDiameter(state.throatDiameterMm / 1000);
-      var vInlet = state.inletVelocity;
-      var vThroat = Physics.continuityVelocity(aInlet, vInlet, aThroat);
-      var vOutlet = Physics.continuityVelocity(aThroat, vThroat, aInlet);
-      var rho = currentDensity();
-      var tInlet = Physics.bernoulliTerms(rho, vInlet, 0);
-      var tThroat = Physics.bernoulliTerms(rho, vThroat, 0);
-      var tOutlet = Physics.bernoulliTerms(rho, vOutlet, 0);
-      return {
-        vInlet: vInlet,
-        vThroat: vThroat,
-        vOutlet: vOutlet,
-        pInlet: VENTURI_P_REF,
-        pThroat: VENTURI_P_REF + (tInlet.dynamic - tThroat.dynamic),
-        pOutlet: VENTURI_P_REF + (tInlet.dynamic - tOutlet.dynamic)
-      };
-    }
-
-    function formatVelocity(v) { return v.toFixed(1) + ' m/s'; }
-    function formatPressure(p) { return (p / 1000).toFixed(1) + ' kPa'; }
-
-    function updateReadouts() {
-      var r = compute();
-      el.inletV.textContent = formatVelocity(r.vInlet);
-      el.inletP.textContent = formatPressure(r.pInlet);
-      el.throatV.textContent = formatVelocity(r.vThroat);
-      el.throatP.textContent = formatPressure(r.pThroat);
-      el.outletV.textContent = formatVelocity(r.vOutlet);
-      el.outletP.textContent = formatPressure(r.pOutlet);
-    }
-
-    function updateLabels() {
-      el.throatValue.textContent = state.throatDiameterMm.toFixed(0) + ' mm';
-      el.velocityValue.textContent = state.inletVelocity.toFixed(1) + ' m/s';
-      el.customDensityValue.textContent = state.customDensity.toFixed(0) + ' kg/m³';
-    }
-
-    function updateTheory() {
-      el.theoryText.textContent = VENTURI_THEORY[state.mode];
-    }
-
-    function throatRadiusNormalized() {
-      var min = parseFloat(el.throatSlider.min);
-      var max = parseFloat(el.throatSlider.max);
-      var t = (state.throatDiameterMm - min) / (max - min);
-      return 0.15 + t * (0.5 - 0.15);
-    }
-
-    function getProfile() {
-      var rWide = 0.5;
-      var rThroat = throatRadiusNormalized();
-      return {
-        radiusFn: function (x) {
-          if (x < 0.5) return PipeGeometry.smoothTaper(x, 0, 0.5, rWide, rThroat);
-          return PipeGeometry.smoothTaper(x, 0.5, 1, rThroat, rWide);
-        }
-      };
-    }
-
-    var viz = createPipeFlowViz(el.canvas, {
-      getProfile: getProfile,
-      getInletVelocity: function () { return state.inletVelocity; },
-      particleCount: 16
-    });
-    viz.start();
-
-    function onResize() { viz.resize(); }
-    window.addEventListener('resize', onResize);
-
-    el.modeConvergent.addEventListener('click', function () {
-      state.mode = 'convergent';
-      el.modeConvergent.classList.add('active');
-      el.modeDivergent.classList.remove('active');
-      updateTheory();
-    });
-
-    el.modeDivergent.addEventListener('click', function () {
-      state.mode = 'divergent';
-      el.modeDivergent.classList.add('active');
-      el.modeConvergent.classList.remove('active');
-      updateTheory();
-    });
-
-    el.throatSlider.addEventListener('input', function () {
-      state.throatDiameterMm = parseFloat(el.throatSlider.value);
-      updateLabels();
-      updateReadouts();
-    });
-
-    el.velocitySlider.addEventListener('input', function () {
-      state.inletVelocity = parseFloat(el.velocitySlider.value);
-      updateLabels();
-      updateReadouts();
-    });
-
-    el.fluidSelect.addEventListener('change', function () {
-      state.fluidKey = el.fluidSelect.value;
-      el.customDensityWrap.hidden = state.fluidKey !== 'custom';
-      updateReadouts();
-    });
-
-    el.customDensityInput.addEventListener('input', function () {
-      state.customDensity = parseFloat(el.customDensityInput.value) || 0;
-      updateLabels();
-      updateReadouts();
-    });
-
-    updateLabels();
-    updateReadouts();
-    updateTheory();
-
-    return {
-      destroy: function () {
-        viz.stop();
-        window.removeEventListener('resize', onResize);
-      }
-    };
-  }
-
-  function diameterFromArea(a) {
-    return 2 * Math.sqrt(a / Math.PI) * 1000; // m^2 -> mm
-  }
-
-  function bernoulliNormRadius(dMm) {
-    var t = clamp(dMm / 60, 0, 1);
-    return 0.12 + t * 0.4;
-  }
-
-  function initBernoulliTool(root) {
-    var el = {
-      radios: root.querySelectorAll('input[name="solve-target"]'),
-      d1Input: root.querySelector('[data-role="d1-input"]'),
-      v1Input: root.querySelector('[data-role="v1-input"]'),
-      d2Input: root.querySelector('[data-role="d2-input"]'),
-      v2Input: root.querySelector('[data-role="v2-input"]'),
-      h1Input: root.querySelector('[data-role="h1-input"]'),
-      h2Input: root.querySelector('[data-role="h2-input"]'),
-      fluidSelect: root.querySelector('[data-role="fluid-select"]'),
-      customDensityWrap: root.querySelector('[data-role="custom-density-wrap"]'),
-      customDensityInput: root.querySelector('[data-role="custom-density-input"]'),
-      customDensityValue: root.querySelector('[data-role="custom-density-value"]'),
-      canvas: root.querySelector('[data-role="canvas"]'),
-      h1Label: root.querySelector('[data-role="h1-label"]'),
-      h2Label: root.querySelector('[data-role="h2-label"]'),
-      v1Out: root.querySelector('[data-role="v1-out"]'),
-      v2Out: root.querySelector('[data-role="v2-out"]'),
-      dyn1Out: root.querySelector('[data-role="dyn1-out"]'),
-      dyn2Out: root.querySelector('[data-role="dyn2-out"]'),
-      hydro1Out: root.querySelector('[data-role="hydro1-out"]'),
-      hydro2Out: root.querySelector('[data-role="hydro2-out"]'),
-      deltaPOut: root.querySelector('[data-role="delta-p-out"]')
-    };
-
-    var state = {
-      d1: parseFloat(el.d1Input.value),
-      v1: parseFloat(el.v1Input.value),
-      d2: parseFloat(el.d2Input.value),
-      v2: parseFloat(el.v2Input.value),
-      h1: parseFloat(el.h1Input.value),
-      h2: parseFloat(el.h2Input.value),
-      fluidKey: 'water',
-      customDensity: parseFloat(el.customDensityInput.value),
-      solveTarget: 'v2'
-    };
-
-    function currentDensity() {
-      if (state.fluidKey === 'custom') return state.customDensity;
-      return FLUID_PRESETS[state.fluidKey].density;
-    }
-
-    function applyDisabledStates() {
-      el.d1Input.disabled = state.solveTarget === 'd1';
-      el.v1Input.disabled = state.solveTarget === 'v1';
-      el.d2Input.disabled = state.solveTarget === 'd2';
-      el.v2Input.disabled = state.solveTarget === 'v2';
-    }
-
-    function readEditableInputs() {
-      if (state.solveTarget !== 'd1') state.d1 = parseFloat(el.d1Input.value) || 0;
-      if (state.solveTarget !== 'v1') state.v1 = parseFloat(el.v1Input.value) || 0;
-      if (state.solveTarget !== 'd2') state.d2 = parseFloat(el.d2Input.value) || 0;
-      if (state.solveTarget !== 'v2') state.v2 = parseFloat(el.v2Input.value) || 0;
-      state.h1 = parseFloat(el.h1Input.value) || 0;
-      state.h2 = parseFloat(el.h2Input.value) || 0;
-    }
-
-    function solve() {
-      var fields = {
-        A1: state.solveTarget === 'd1' ? null : Physics.areaFromDiameter(state.d1 / 1000),
-        V1: state.solveTarget === 'v1' ? null : state.v1,
-        A2: state.solveTarget === 'd2' ? null : Physics.areaFromDiameter(state.d2 / 1000),
-        V2: state.solveTarget === 'v2' ? null : state.v2
-      };
-      var result = Physics.solveContinuity(fields);
-      if (!result) return;
-
-      var target = state.solveTarget;
-      var value;
-      if (target === 'd1') value = diameterFromArea(result.A1);
-      else if (target === 'd2') value = diameterFromArea(result.A2);
-      else if (target === 'v1') value = result.V1;
-      else value = result.V2;
-
-      if (isFinite(value) && value >= 0) state[target] = value;
-    }
-
-    function updateSolvedInputValue() {
-      if (state.solveTarget === 'd1') el.d1Input.value = state.d1.toFixed(1);
-      else if (state.solveTarget === 'd2') el.d2Input.value = state.d2.toFixed(1);
-      else if (state.solveTarget === 'v1') el.v1Input.value = state.v1.toFixed(2);
-      else el.v2Input.value = state.v2.toFixed(2);
-    }
-
-    function updateElevationLabels() {
-      el.h1Label.textContent = 'h₁ = ' + state.h1.toFixed(1) + ' m';
-      el.h2Label.textContent = 'h₂ = ' + state.h2.toFixed(1) + ' m';
-    }
-
-    function updateDensityLabel() {
-      el.customDensityValue.textContent = state.customDensity.toFixed(0) + ' kg/m³';
-    }
-
-    function updateBernoulliTable() {
-      var rho = currentDensity();
-      var t1 = Physics.bernoulliTerms(rho, state.v1, state.h1);
-      var t2 = Physics.bernoulliTerms(rho, state.v2, state.h2);
-      el.v1Out.textContent = state.v1.toFixed(2) + ' m/s';
-      el.v2Out.textContent = state.v2.toFixed(2) + ' m/s';
-      el.dyn1Out.textContent = (t1.dynamic / 1000).toFixed(2) + ' kPa';
-      el.dyn2Out.textContent = (t2.dynamic / 1000).toFixed(2) + ' kPa';
-      el.hydro1Out.textContent = (t1.hydrostatic / 1000).toFixed(2) + ' kPa';
-      el.hydro2Out.textContent = (t2.hydrostatic / 1000).toFixed(2) + ' kPa';
-      var deltaP = (t2.dynamic + t2.hydrostatic) - (t1.dynamic + t1.hydrostatic);
-      el.deltaPOut.textContent = (deltaP / 1000).toFixed(2) + ' kPa';
-    }
-
-    function updateAll() {
-      readEditableInputs();
-      solve();
-      updateSolvedInputValue();
-      updateElevationLabels();
-      updateDensityLabel();
-      updateBernoulliTable();
-    }
-
-    function getProfile() {
-      return {
-        radiusFn: function (x) {
-          return PipeGeometry.smoothTaper(x, 0, 1, bernoulliNormRadius(state.d1), bernoulliNormRadius(state.d2));
-        }
-      };
-    }
-
-    var viz = createPipeFlowViz(el.canvas, {
-      getProfile: getProfile,
-      getInletVelocity: function () { return state.v1; },
-      particleCount: 16
-    });
-    viz.start();
-
-    function onResize() { viz.resize(); }
-    window.addEventListener('resize', onResize);
-
-    for (var i = 0; i < el.radios.length; i++) {
-      el.radios[i].addEventListener('change', function (e) {
-        state.solveTarget = e.target.value;
-        applyDisabledStates();
-        updateAll();
-      });
-    }
-
-    [el.d1Input, el.v1Input, el.d2Input, el.v2Input, el.h1Input, el.h2Input].forEach(function (input) {
-      input.addEventListener('input', updateAll);
-    });
-
-    el.fluidSelect.addEventListener('change', function () {
-      state.fluidKey = el.fluidSelect.value;
-      el.customDensityWrap.hidden = state.fluidKey !== 'custom';
-      updateAll();
-    });
-
-    el.customDensityInput.addEventListener('input', function () {
-      state.customDensity = parseFloat(el.customDensityInput.value) || 0;
-      updateAll();
-    });
-
-    applyDisabledStates();
-    updateAll();
-
-    return {
-      destroy: function () {
-        viz.stop();
-        window.removeEventListener('resize', onResize);
-      }
-    };
-  }
-
-  // ---- Home grid renderer -------------------------------------------------
-
-  function renderGrid() {
-    var grid = document.getElementById('tool-grid');
-    grid.innerHTML = '';
-    TOOL_REGISTRY.forEach(function (tool) {
-      var card = document.createElement('button');
-      card.type = 'button';
-      card.className = 'tool-card';
-      card.dataset.toolId = tool.id;
-      card.innerHTML =
-        '<div class="card-title">' + tool.title + '</div>' +
-        '<div class="card-desc">' + tool.description + '</div>';
-      card.addEventListener('click', function () {
-        location.hash = tool.id;
-      });
-      grid.appendChild(card);
-    });
-
-    var placeholder = document.createElement('div');
-    placeholder.className = 'tool-card placeholder';
-    placeholder.innerHTML = '<div class="card-desc">More tools coming soon</div>';
-    grid.appendChild(placeholder);
-  }
-
-  // ---- Router --------------------------------------------------------------
-
-  var homeView = document.getElementById('home-view');
-  var toolView = document.getElementById('tool-view');
-  var toolMount = document.getElementById('tool-mount');
-  var activeTool = null; // { destroy() } handle for the currently mounted tool
-
-  function showHome() {
-    if (activeTool) {
-      activeTool.destroy();
-      activeTool = null;
-      toolMount.innerHTML = '';
-    }
-    toolView.hidden = true;
-    homeView.hidden = false;
-  }
-
-  function showTool(entry) {
-    if (activeTool) {
-      activeTool.destroy();
-      activeTool = null;
-      toolMount.innerHTML = '';
-    }
-    homeView.hidden = true;
-    toolView.hidden = false;
-
-    var template = document.getElementById(entry.templateId);
-    var fragment = template.content.cloneNode(true);
-    toolMount.appendChild(fragment);
-    activeTool = entry.init(toolMount);
-  }
-
-  function navigate() {
-    var hash = location.hash.replace('#', '');
-    var entry = TOOL_REGISTRY.filter(function (t) { return t.id === hash; })[0];
-    if (!entry) {
-      showHome();
-      return;
-    }
-    showTool(entry);
-  }
-
-  window.addEventListener('hashchange', navigate);
-
-  document.getElementById('home-btn').addEventListener('click', function () {
-    location.hash = '';
-  });
-  document.getElementById('back-btn').addEventListener('click', function () {
-    location.hash = '';
-  });
-
-  // ---- Bootstrap -------------------------------------------------------
-
-  applyTheme(initialTheme());
+'use strict';
+
+// ===== Catalogue =====
+// Adding a tool or lesson = one entry here + one <template>.
+const CATALOG = [
+  {
+    id: 'rankine-cycle',
+    type: 'lesson',
+    code: 'S220-L1',
+    title: 'Rankine Cycle Explainer',
+    summary: 'Walk the S220 loop — boiler, turbine, condenser, feed pump — on the schematic and the T–s diagram, then check yourself.',
+    topics: ['Thermodynamics', 'S220 rig'],
+    keywords: ['rankine', 'cycle', 'boiler', 'condenser', 'feed pump', 'T-s', 'entropy', 'quiz'],
+    templateId: 'tpl-rankine-explainer',
+    init: initPlaceholder,
+  },
+  {
+    id: 'turbine-performance',
+    type: 'tool',
+    code: 'S220-T1',
+    title: 'Turbine Performance Calculator',
+    summary: 'Torque, shaft power and specific steam consumption from your observation sheet, with every step worked.',
+    topics: ['Thermodynamics', 'S220 rig'],
+    keywords: ['torque', 'power', 'brake', 'steam consumption', 'SSC', 'speed', 'observation', 'test'],
+    templateId: 'tpl-turbine-performance',
+    init: initPlaceholder,
+  },
+];
+
+const TYPE_LABELS = { tool: 'Tools', lesson: 'Lessons' };
+
+// Placeholder init: proves the mount/destroy lifecycle (timer must stop on navigation).
+function initPlaceholder(root) {
+  const out = root.querySelector('[data-role="uptime"]');
+  const started = Date.now();
+  const timer = setInterval(() => {
+    out.textContent = Math.floor((Date.now() - started) / 1000);
+  }, 1000);
+  return { destroy() { clearInterval(timer); } };
+}
+
+// ===== Theme =====
+document.getElementById('theme-toggle').addEventListener('click', () => {
+  const dark = document.documentElement.classList.toggle('dark');
+  try { localStorage.setItem('s220-theme', dark ? 'dark' : 'light'); } catch (e) {}
+});
+
+// ===== Home: search + filters =====
+const els = {
+  home: document.getElementById('view-home'),
+  item: document.getElementById('view-item'),
+  search: document.getElementById('search'),
+  typeFilters: document.getElementById('type-filters'),
+  topicFilters: document.getElementById('topic-filters'),
+  grid: document.getElementById('card-grid'),
+  empty: document.getElementById('empty-state'),
+  status: document.getElementById('results-status'),
+  count: document.getElementById('item-count'),
+  itemMeta: document.getElementById('item-meta'),
+  itemTitle: document.getElementById('item-title'),
+  mount: document.getElementById('item-mount'),
+};
+
+const homeState = { q: '', type: '', topic: '' };
+
+const ALL_TOPICS = [...new Set(CATALOG.flatMap((e) => e.topics))].sort();
+
+function matches(entry, state) {
+  if (state.type && entry.type !== state.type) return false;
+  if (state.topic && !entry.topics.includes(state.topic)) return false;
+  const haystack = [entry.title, entry.summary, entry.code, ...entry.keywords, ...entry.topics].join(' ').toLowerCase();
+  return state.q.toLowerCase().split(/\s+/).filter(Boolean).every((term) => haystack.includes(term));
+}
+
+function chip(label, pressed, onClick) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = label;
+  b.setAttribute('aria-pressed', String(pressed));
+  b.className = 'h-11 px-4 rounded-[2px] border font-display font-semibold text-[15px] uppercase tracking-wider ' +
+    (pressed ? 'bg-accent border-accent text-on-accent' : 'bg-surface border-line text-fg hover:border-accent');
+  b.addEventListener('click', onClick);
+  return b;
+}
+
+function renderFilters() {
+  els.typeFilters.replaceChildren(
+    chip('All', homeState.type === '', () => setHomeState({ type: '' })),
+    ...Object.entries(TYPE_LABELS).map(([type, label]) =>
+      chip(label, homeState.type === type, () => setHomeState({ type: homeState.type === type ? '' : type })))
+  );
+  els.topicFilters.replaceChildren(
+    ...ALL_TOPICS.map((topic) =>
+      chip(topic, homeState.topic === topic, () => setHomeState({ topic: homeState.topic === topic ? '' : topic })))
+  );
+}
+
+function card(entry) {
+  const a = document.createElement('a');
+  a.href = `#/${entry.type}/${entry.id}`;
+  a.className = 'block bg-surface border border-line rounded-[2px] p-4 hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent';
+
+  const meta = document.createElement('div');
+  meta.className = 'flex justify-between font-mono text-xs uppercase ' + (entry.type === 'tool' ? 'text-accent-ink' : 'text-steel');
+  const kind = document.createElement('span');
+  kind.textContent = entry.type;
+  const code = document.createElement('span');
+  code.textContent = entry.code;
+  meta.append(kind, code);
+
+  const title = document.createElement('h2');
+  title.className = 'mt-1.5 font-display font-semibold text-2xl uppercase leading-tight';
+  title.textContent = entry.title;
+
+  const summary = document.createElement('p');
+  summary.className = 'mt-1.5 text-[15px] leading-normal text-muted';
+  summary.textContent = entry.summary;
+
+  a.append(meta, title, summary);
+  return a;
+}
+
+function renderGrid() {
+  const results = CATALOG.filter((e) => matches(e, homeState));
+  els.grid.replaceChildren(...results.map(card));
+  els.empty.hidden = results.length > 0;
+  els.count.textContent = '/ ' + String(results.length).padStart(2, '0');
+  els.status.textContent = `${results.length} of ${CATALOG.length} items shown`;
+}
+
+function homeHash(state) {
+  const params = new URLSearchParams();
+  for (const key of ['q', 'type', 'topic']) if (state[key]) params.set(key, state[key]);
+  const qs = params.toString();
+  return qs ? `#/?${qs}` : '#/';
+}
+
+// Updates state, the URL (without a history entry or hashchange) and the view.
+function setHomeState(patch) {
+  Object.assign(homeState, patch);
+  history.replaceState(null, '', homeHash(homeState));
+  renderFilters();
   renderGrid();
-  navigate();
-})();
-</script>
+}
 
+els.search.addEventListener('input', () => setHomeState({ q: els.search.value }));
+document.getElementById('clear-filters').addEventListener('click', () => {
+  els.search.value = '';
+  setHomeState({ q: '', type: '', topic: '' });
+});
+
+// ===== Router =====
+let mounted = null;
+
+function unmount() {
+  if (mounted) {
+    mounted.destroy();
+    mounted = null;
+  }
+  els.mount.replaceChildren();
+}
+
+function showHome(params) {
+  unmount();
+  homeState.q = params.get('q') || '';
+  homeState.type = TYPE_LABELS[params.get('type')] ? params.get('type') : '';
+  homeState.topic = ALL_TOPICS.includes(params.get('topic')) ? params.get('topic') : '';
+  els.search.value = homeState.q;
+  renderFilters();
+  renderGrid();
+  els.item.hidden = true;
+  els.home.hidden = false;
+  document.title = 'S220 Lab Portal';
+}
+
+function showItem(entry) {
+  unmount();
+  els.itemMeta.className = 'mt-2 flex justify-between font-mono text-xs uppercase ' + (entry.type === 'tool' ? 'text-accent-ink' : 'text-steel');
+  els.itemMeta.replaceChildren(
+    Object.assign(document.createElement('span'), { textContent: entry.type }),
+    Object.assign(document.createElement('span'), { textContent: entry.code })
+  );
+  els.itemTitle.textContent = entry.title;
+  const fragment = document.getElementById(entry.templateId).content.cloneNode(true);
+  els.mount.append(fragment);
+  mounted = entry.init(els.mount) || { destroy() {} };
+  els.home.hidden = true;
+  els.item.hidden = false;
+  document.title = `${entry.title} — S220 Lab Portal`;
+  window.scrollTo(0, 0);
+  els.itemTitle.focus();
+}
+
+function route() {
+  const hash = location.hash.replace(/^#/, '') || '/';
+  const [path, query = ''] = hash.split('?');
+  const parts = path.split('/').filter(Boolean);
+
+  if (parts.length === 0) return showHome(new URLSearchParams(query));
+
+  if (parts.length === 2) {
+    const entry = CATALOG.find((e) => e.type === parts[0] && e.id === parts[1]);
+    if (entry) return showItem(entry);
+  }
+
+  // Unknown route: fall back to home and fix the URL.
+  history.replaceState(null, '', '#/');
+  showHome(new URLSearchParams());
+}
+
+window.addEventListener('hashchange', route);
+route();
+</script>
 </body>
 </html>

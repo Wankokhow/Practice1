@@ -41,75 +41,78 @@ Status legend: `[ ]` not started, `[x]` done. Mark phases done or prune
 finished detail as work progresses — keep this section skimmable, not a
 full spec.
 
-### Data model (shared across all phases)
-- `TOOL_REGISTRY` entry: `{ id, title, description, templateId, init }`
-- `FLUID_PRESETS`: `{ water: 1000, air: 1.225, oil: 900 }` (kg/m³) + custom
-  density option
-- Physics module: `areaFromDiameter(d)`, `continuityVelocity(A1,V1,A2)`,
-  `solveContinuity({A1,V1,A2,V2})`, `bernoulliTerms(rho,V,h,g)`
+**Product**: a phone-first portal of small tools and lessons for students
+at the P.A. Hilton S220 Rankine Cycle Steam Turbine rig (source: the S220
+manual, S220/E/5/043). The collection grows over time; phase one ships
+exactly two items: one lesson and one tool. (This restarts the project —
+the earlier Venturi/Bernoulli portal was discarded; it lives in git
+history.)
 
-### Key flows (shared across all phases)
-- **Navigation**: hashchange → look up registry entry by id → destroy
-  currently mounted tool → clone its `<template>` into `#tool-mount` → call
-  `init(root)`
-- **Mount/unmount**: `init(root)` wires its own controls + rAF loop,
-  returns `{ destroy() }`; router always destroys before remounting
-- **Input → viz**: a tool's slider/dropdown changes update closures read by
-  `createPipeFlowViz`'s `getProfile()`/`getInletVelocity()`, so the shared
-  animation reflects current state with no extra glue
-- **Theme**: toggle → `data-theme` attr + `localStorage['fdl-theme']` → all
-  CSS via custom properties + canvas colors re-read at draw time
+### Data model
+- `CATALOG` entry: `{ id, type: 'tool'|'lesson', title, summary, topics[],
+  keywords[], templateId, init }`. Adding an item = one entry + one
+  `<template>`.
+- `S220` constants: brake effective radius 0.023 m, rotor I = 49.7e-6
+  kg·m², heat loss Qr = 3.2·(t5 − ta) W, cooling water Cp 4.18 kJ/kg·K,
+  overspeed 40 000 rpm.
+- `MANUAL_DATA`: the manual's sample tests (A–D, F–K, …) with errata
+  corrected; each correction carries a short note shown in the UI where
+  it differs from the printed manual.
+- Steam properties: thin wrapper over an IAPWS-IF97 library loaded from a
+  CDN (vet the package first; if none is trustworthy, ask before falling
+  back to an embedded table). If it fails to load, show that clearly —
+  never show wrong numbers.
 
-### Visual design — Direction A: "Technical Lab" (chosen)
-- **Fonts**: `IBM Plex Sans` (UI/headings), `IBM Plex Mono` (data readouts,
-  values, labels) — via Google Fonts `<link>` in `<head>`.
-- **Palette (light)**: bg `#fafbfc`, fg `#1a2027`, muted `#5b6670`, card bg
-  `#ffffff`, border `#d7dee5`, accent primary (teal) `#3b9aa8`, accent
-  secondary (amber) `#b5791f`.
-- **Palette (dark)**: bg `#14181c`, fg `#e7ecf0`, muted `#8a97a1`, card bg
-  `#1b2126`, border `#2b333a`, same accent hex values (kept unchanged across
-  themes — sufficiently legible on both).
-- **Look**: rectangular cards, minimal border-radius (~4–5px), 1px borders,
-  thin-line SVG icons, faint dot/grid "blueprint" texture behind content,
-  monospace used specifically for numeric readouts/values to separate data
-  from UI chrome.
-- Reference mockup (for tone/layout, not exact markup):
-  https://claude.ai/code/artifact/97ef6c25-36ae-41d1-a290-0468d580b4ee
-  (artboard "A — Technical Lab")
+### Key flows
+- **Navigation**: hash routes `#/tool/<id>`, `#/lesson/<id>`; home keeps
+  search + filter state in the hash (`#/?q=…&type=…&topic=…`). Router
+  calls the mounted item's `destroy()` before cloning the next template
+  and calling `init(root)`; unknown hash → home.
+- **Home**: card grid + text search (title/summary/keywords) + filter
+  chips (type, topic).
+- **Theme**: Tailwind `darkMode: 'class'` on `<html>`; choice in
+  `localStorage`, defaulting to the OS preference.
+- **Persistence**: calculator edits auto-save to `localStorage`, with
+  "Reset to manual data"; CSV export of inputs + results.
+
+### Visual design — Direction B: "Engine Room" (chosen)
+- Tailwind v4 in-browser build, pinned (`@tailwindcss/browser@4.1.18` on
+  jsDelivr); config is CSS-first in `<style type="text/tailwindcss">`
+  (`@theme inline` maps tokens to CSS vars, `@custom-variant dark` on
+  `.dark`). v4 renames `rounded` — use explicit `rounded-[2px]`. (v3's
+  cdn.tailwindcss.com is unreachable from the dev sandbox, so it can't be
+  tested.) Fonts (Google Fonts):
+  `Barlow Condensed` (headings, uppercase, tracked), `Barlow` (body),
+  `JetBrains Mono` (readouts, inputs, codes).
+- Dark: bg `#16181a`, surface `#202326`, border `#34383c`, fg `#eceff1`,
+  muted `#a3aab0`, accent safety-orange `#f08a24` (text `#f5a04f`),
+  secondary steel-blue `#7fb2e5`. Light theme: derived equivalents with
+  the same accents, contrast-checked.
+- Look: near-square corners (2px), 1px borders, orange header rule,
+  large 48px inputs and ≥44px touch targets, monospace numeric readouts
+  in ruled result rows.
+- Mockups: https://claude.ai/artifact/AvrEqTitS76Jmbw9GJD8bR (artboard
+  "B — Engine Room").
 
 ### Phases
-- `[x]` **Phase 1 — Shell & routing**: header (title, Home button, theme
-  toggle), home/tool view containers, empty `<template>` stubs, tool
-  registry + hash router + grid renderer, theme toggle via CSS vars +
-  localStorage. Proven with 2 placeholder templates.
-- `[x]` **Phase 2 — Shared physics + pipe-flow viz**: physics module (pure
-  functions, no DOM); `createPipeFlowViz(canvas, options)` factory
-  (smoothstep-tapered `radiusFn`, particles advancing by
-  `velocity/area(x)`, speed-colored draw loop); sanity-checked against a
-  throwaway profile — not yet wired into either tool.
-- `[x]` **Phase 3 — Venturi Tube tool**: template (mode toggle
-  convergent/divergent, throat-diameter + inlet-velocity sliders, fluid
-  dropdown + custom density, canvas, live velocity/pressure readouts,
-  theory panel with continuity + Bernoulli equations, h1=h2=0 assumption
-  stated). `initVenturiTool` wires physics + shared viz + inputs. Geometry
-  is a fixed symmetric venturi (inlet diameter == outlet diameter, throat
-  adjustable); the mode toggle switches which theory text/segment is
-  emphasized rather than reshaping the pipe.
-- `[x]` **Phase 4 — Bernoulli/Continuity tool**: template (reuses shared
-  viz with a simple two-point taper, elevation h1/h2 numeric inputs shown
-  as flat-pipe side labels, live Bernoulli term readout table, continuity
-  solver, own theory panel). `initBernoulliTool` wires physics + shared
-  viz + solver. The "exactly-one-blank" rule is enforced by a radio group
-  (pick which of D1/V1/D2/V2 to solve for; its input is disabled and
-  computed live) rather than by validating literal blank fields.
-- `[x]` **Phase 5 — Polish**: verified no leaked `requestAnimationFrame`
-  loops across rapid tool switching, no horizontal overflow at 375px on
-  any view, dark-mode canvas/particle contrast is legible on both tools,
-  and hash deep-linking (including an unknown hash falling back to home)
-  all work. Fixed a real bug found along the way: `element.hidden = ...`
-  doesn't reflect to the `hidden` attribute on `<svg>` elements in this
-  browser, so the theme-toggle icon never appeared — switched to explicit
-  `setAttribute`/`removeAttribute`.
+- `[x]` **Phase 1 — Shell**: Tailwind config, theme toggle, catalogue,
+  router, home grid with search + filters; proven with 2 placeholder
+  entries (each runs a timer to prove `destroy()` on navigation).
+- `[ ]` **Phase 2 — Shared modules**: vet + wrap steam library, S220
+  constants, `MANUAL_DATA` with errata notes, storage + CSV helpers.
+- `[ ]` **Phase 3 — Turbine Performance Calculator**: single-reading mode
+  with worked steps (torque, power, steam flow, SSC); test-table mode
+  mirroring the observation sheets, preloaded from the manual, with
+  Chart.js (CDN) plots of torque/power/SSC vs speed, auto-save, CSV.
+- `[ ]` **Phase 4 — Rankine Cycle Explainer**: interactive SVG schematic
+  (tap a component for its role, animated flow); 4-step walkthrough
+  highlighting schematic + T–s diagram (dome and states from the steam
+  library at typical S220 conditions ~5.6 bar in / 0.5 bar out); short
+  self-check quiz with instant feedback.
+- `[ ]` **Phase 5 — Polish**: no horizontal scroll at 375px, both themes
+  legible, deep links, no leaked loops on navigation, graceful CDN
+  failure.
 
-**Phase one complete.** All 5 phases done; `index.html` ships the full
-portal shell plus both tools.
+**Later phases (not in phase one)**: isentropic/thermal efficiency,
+retardation (friction) test, steam quality by throttling, heat/power
+ratio.
