@@ -15,13 +15,20 @@ Guidance for Claude Code (and any other contributor) working in this repository.
    copy-pasted as a single file for sharing in class and on single-file code
    platforms (e.g. CodePen, JSFiddle).
 2. **Vanilla only.** Use plain HTML, CSS, and JavaScript only. No frameworks
-   (React, Vue, Angular, jQuery, Tailwind, etc.) and no build step (no
+   (React, Vue, Angular, jQuery, etc.) and no build step (no
    bundlers, transpilers, package.json, npm install, etc.). External library
    `<script>`/`<link>` tags are fine per constraint 1, but the project's own
    code must not depend on a framework or build tooling.
 
 When implementing any feature, keep all markup, styles, and scripts inside
 `index.html`.
+
+## Tech stack (hard constraints — do not deviate)
+- Vanilla HTML, CSS, and JavaScript only. No React, Vue, or any JS framework.
+- Tailwind CSS for all styling (via CDN only).
+- No backend, no database. Fully static site.
+- A toggle for light and dark theme, with the choice remembered
+  across visits.
 
 ## Working conventions
 - Before implementing any non-trivial feature, ask clarifying questions about
