@@ -58,10 +58,19 @@ history.)
 - `MANUAL_DATA`: the manual's sample tests (A–D, F–K, …) with errata
   corrected; each correction carries a short note shown in the UI where
   it differs from the printed manual.
-- Steam properties: thin wrapper over an IAPWS-IF97 library loaded from a
-  CDN (vet the package first; if none is trustworthy, ask before falling
-  back to an embedded table). If it fails to load, show that clearly —
-  never show wrong numbers.
+- `Perf`: pure functions (abs pressure, torque, power, steam flow, SSC,
+  cooling-water heat, heat loss) + `computeReading(row)` → all derived
+  values, `null` where an input is missing.
+- `Steam`: wrapper over `iapws-if97@2.2.0` (MIT, zero deps, pure ESM),
+  dynamically imported from pinned jsDelivr files `…/dist/index.js`.
+  Units: bar abs, °C, kJ/kg, kJ/(kg·K). `pt/ph/ps/px/tx/sat`;
+  `Steam.status` loading|ready|failed + `steamstatus` event. Vetted
+  against IAPWS verification tables and the manual's worked examples.
+  Calls throw `SteamUnavailableError` when not loaded; catalogue entries
+  with `needs: ['steam']` get a loading/failed banner — never wrong
+  numbers.
+- `Store` (namespaced `s220:` localStorage, failure-tolerant), `Csv`
+  (`build`, `download` with BOM + formula-injection guard).
 
 ### Key flows
 - **Navigation**: hash routes `#/tool/<id>`, `#/lesson/<id>`; home keeps
@@ -98,7 +107,7 @@ history.)
 - `[x]` **Phase 1 — Shell**: Tailwind config, theme toggle, catalogue,
   router, home grid with search + filters; proven with 2 placeholder
   entries (each runs a timer to prove `destroy()` on navigation).
-- `[ ]` **Phase 2 — Shared modules**: vet + wrap steam library, S220
+- `[x]` **Phase 2 — Shared modules**: vet + wrap steam library, S220
   constants, `MANUAL_DATA` with errata notes, storage + CSV helpers.
 - `[ ]` **Phase 3 — Turbine Performance Calculator**: single-reading mode
   with worked steps (torque, power, steam flow, SSC); test-table mode

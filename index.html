@@ -106,6 +106,7 @@
     </a>
     <div class="mt-2 flex justify-between font-mono text-xs uppercase" id="item-meta"></div>
     <h1 id="item-title" tabindex="-1" class="mt-1 font-display font-semibold text-[32px] leading-tight uppercase tracking-wide outline-none"></h1>
+    <div id="dep-banner" role="status" class="mt-4 border border-accent bg-surface rounded-[2px] px-4 py-3 text-[15px]" hidden></div>
     <div id="item-mount" class="mt-4"></div>
   </section>
 </main>
@@ -129,6 +130,154 @@
 <script>
 'use strict';
 
+// ===== S220 rig constants (S220 manual, "Useful Data") =====
+const S220 = {
+  brakeRadius: 0.023,        // m, effective radius to belt centre line
+  rotorInertia: 49.7e-6,     // kg·m², rotating parts
+  cpWater: 4.18,             // kJ/(kg·K), condenser cooling water
+  heatLossCoeff: 3.2,        // W/K: Qr = 3.2·(t5 − ta)
+  overspeedRpm: 40000,
+  condensateDensity: 1,      // g/cm³ — the manual takes 1 cm³ condensate = 1 g
+};
+
+// ===== Performance calculations (pure functions; SI units unless named) =====
+const Perf = {
+  absBar: (gaugeBar, atmMbar) => gaugeBar + atmMbar / 1000,
+  brakeTorque: (loadN) => loadN * S220.brakeRadius,                       // N·m
+  shaftPower: (torqueNm, rpm) => torqueNm * 2 * Math.PI * rpm / 60,        // W
+  steamFlow: (volumeCm3, seconds) => volumeCm3 * S220.condensateDensity / 1000 / seconds, // kg/s
+  specificSteamConsumption: (flowKgS, powerW) => flowKgS * 3600 / (powerW / 1000), // kg/kWh
+  coolingWaterHeat: (flowGS, t3, t4) => flowGS * S220.cpWater * (t4 - t3), // W (g/s × kJ/kg·K × K)
+  heatLoss: (t5, ta) => S220.heatLossCoeff * (t5 - ta),                    // W
+
+  // One observation-sheet row → every derived quantity. Missing inputs give null outputs.
+  computeReading({ atmMbar, inletBarG, exhaustBarG, rpm, loadN, condensateCm3, condensateTimeS }) {
+    const ok = (...v) => v.every((x) => typeof x === 'number' && Number.isFinite(x));
+    const inletAbs = ok(inletBarG, atmMbar) ? Perf.absBar(inletBarG, atmMbar) : null;
+    const exhaustAbs = ok(exhaustBarG, atmMbar) ? Perf.absBar(exhaustBarG, atmMbar) : null;
+    const torque = ok(loadN) ? Perf.brakeTorque(loadN) : null;
+    const power = ok(torque, rpm) ? Perf.shaftPower(torque, rpm) : null;
+    const flow = ok(condensateCm3, condensateTimeS) && condensateTimeS > 0 ? Perf.steamFlow(condensateCm3, condensateTimeS) : null;
+    const ssc = ok(flow, power) && power > 0 ? Perf.specificSteamConsumption(flow, power) : null;
+    return { inletAbs, exhaustAbs, torque, power, flow, ssc };
+  },
+};
+
+// ===== Steam properties (IAPWS-IF97 via the iapws-if97 package, MIT) =====
+// Loaded from pinned files on jsDelivr (pure ES modules, no dependencies).
+// Wrapper units: pressure bar abs, temperature °C, h kJ/kg, s kJ/(kg·K).
+const STEAM_LIB_URL = 'https://cdn.jsdelivr.net/npm/iapws-if97@2.2.0/dist/index.js';
+
+class SteamUnavailableError extends Error {}
+
+const Steam = (() => {
+  let lib = null;
+  const api = { status: 'loading' };
+  const toState = (r) => ({
+    p: r.pressure * 10, T: r.temperature - 273.15, h: r.enthalpy, s: r.entropy,
+    v: r.specificVolume, x: r.quality, region: r.region,
+  });
+  const need = () => {
+    if (!lib) throw new SteamUnavailableError('Steam property library is not available.');
+    return lib;
+  };
+
+  api.ready = import(STEAM_LIB_URL).then(
+    (mod) => { lib = mod; api.status = 'ready'; },
+    () => { api.status = 'failed'; }
+  ).then(() => { window.dispatchEvent(new Event('steamstatus')); });
+
+  api.pt = (pBar, tC) => toState(need().solvePT(pBar / 10, tC + 273.15));
+  api.ph = (pBar, h) => toState(need().solvePH(pBar / 10, h));
+  api.ps = (pBar, s) => toState(need().solvePS(pBar / 10, s));
+  api.px = (pBar, x) => toState(need().solvePx(pBar / 10, x));
+  api.tx = (tC, x) => toState(need().solveTx(tC + 273.15, x));
+  // Saturated liquid (f) and vapour (g) at a pressure, plus the fg differences.
+  api.sat = (pBar) => {
+    const f = api.px(pBar, 0), g = api.px(pBar, 1);
+    return { p: pBar, T: f.T, hf: f.h, hg: g.h, hfg: g.h - f.h, sf: f.s, sg: g.s, sfg: g.s - f.s, vf: f.v, vg: g.v };
+  };
+  return api;
+})();
+
+// ===== Manual sample data (S220 manual, experiment 2) =====
+// Values as printed except where an erratum corrects them; each correction is
+// listed in `errata` so the UI can flag where it differs from the manual.
+const MANUAL_DATA = [
+  { id: 'A', experiment: '2a', page: 46, atmMbar: 1003, ambientC: 22, inletBarG: 4.6, exhaustBarG: 0, condensateCm3: 200, condensateTimeS: 117,
+    rows: [[38.0, 0.70], [33.3, 0.84], [25.4, 1.00], [17.1, 1.13], [13.1, 1.22], [6.6, 1.32]] },
+  { id: 'B', experiment: '2a', page: 46, atmMbar: 1003, ambientC: 22, inletBarG: 4.6, exhaustBarG: -0.28, condensateCm3: 200, condensateTimeS: 120,
+    rows: [[39.6, 0.83], [30.6, 1.02], [19.3, 1.21], [12.6, 1.29], [9.9, 1.33], [5.0, 1.42]],
+    errata: [
+      'Manual p.48 lists B.1 torque as 9.1×10⁻³ N·m; 0.83 N × 0.023 m = 19.1×10⁻³ N·m (its 79.3 W power uses the correct value).',
+      'Manual p.47 rounds B.4 torque to 0.03 N·m, giving 39.6 W; unrounded it is 0.0297 N·m and 39.2 W.',
+    ] },
+  { id: 'C', experiment: '2a', page: 46, atmMbar: 1003, ambientC: 22, inletBarG: 4.6, exhaustBarG: -0.5, condensateCm3: 200, condensateTimeS: 113,
+    rows: [[38.3, 1.02], [30.6, 1.20], [22.1, 1.31], [14.0, 1.38], [6.0, 1.44]] },
+  { id: 'D', experiment: '2a', page: 46, atmMbar: 1003, ambientC: 22, inletBarG: 4.6, exhaustBarG: -0.75, condensateCm3: 200, condensateTimeS: 118,
+    rows: [[38.4, 1.28], [28.7, 1.49], [20.1, 1.62], [10.2, 1.75], [7.1, 1.80]] },
+  { id: 'F', experiment: '2b', page: 54, atmMbar: 1005, ambientC: 22, inletBarG: 5, exhaustBarG: -0.5, condensateCm3: 200, condensateTimeS: 96,
+    rows: [[35.8, 1.25], [32.0, 1.36], [24.1, 1.40], [15.5, 1.47], [7.2, 1.56]] },
+  { id: 'G', experiment: '2b', page: 54, atmMbar: 1005, ambientC: 22, inletBarG: 4, exhaustBarG: -0.5, condensateCm3: 200, condensateTimeS: 117,
+    rows: [[37.5, 0.77], [33.2, 0.87], [23.0, 1.03], [13.2, 1.09], [8.2, 1.17]],
+    errata: [
+      'Manual p.54 prints G.2 speed as 38.2×10³ rev/min; its own calculation (p.55) and results (p.56) use 33.2×10³, which also fits the higher brake load. Corrected to 33.2.',
+    ] },
+  { id: 'H', experiment: '2b', page: 54, atmMbar: 1005, ambientC: 22, inletBarG: 3, exhaustBarG: -0.5, condensateCm3: 200, condensateTimeS: 141,
+    rows: [[38.0, 0.48], [33.7, 0.58], [26.0, 0.73], [19.0, 0.77], [11.0, 0.90], [8.1, 0.91]] },
+  { id: 'J', experiment: '2b', page: 54, atmMbar: 1005, ambientC: 22, inletBarG: 2, exhaustBarG: -0.75, condensateCm3: 200, condensateTimeS: 184,
+    rows: [[38.7, null], [35.0, 0.18], [28.0, 0.37], [19.8, 0.44], [13.5, 0.53], [7.0, 0.55]],
+    errata: [
+      'Manual p.54 prints the exhaust pressure for test J as −0.75 bar g, although this series is run at a constant −0.5 bar g. Kept as printed. J.1 has no brake-load reading.',
+    ] },
+  { id: 'K', experiment: '2b', page: 54, atmMbar: 1005, ambientC: 22, inletBarG: 1, exhaustBarG: -0.5, condensateCm3: 200, condensateTimeS: 262,
+    rows: [[25.0, 0.04], [20.0, 0.14], [13.0, 0.20], [5.0, 0.27]] },
+].map((t) => ({
+  ...t,
+  errata: t.errata || [],
+  // rows as printed: [speed in 10³ rev/min, brake load N] → readings in rev/min, N
+  rows: t.rows.map(([kRpm, loadN], i) => ({ label: `${t.id}.${i + 1}`, rpm: kRpm * 1000, loadN })),
+}));
+
+// ===== Storage (localStorage, namespaced; tolerant of blocked storage) =====
+const Store = {
+  key: (k) => 's220:' + k,
+  get(k, fallback) {
+    try {
+      const raw = localStorage.getItem(Store.key(k));
+      return raw === null ? fallback : JSON.parse(raw);
+    } catch (e) { return fallback; }
+  },
+  set(k, value) {
+    try { localStorage.setItem(Store.key(k), JSON.stringify(value)); return true; } catch (e) { return false; }
+  },
+  remove(k) {
+    try { localStorage.removeItem(Store.key(k)); } catch (e) {}
+  },
+};
+
+// ===== CSV export =====
+const Csv = {
+  cell(v) {
+    if (v === null || v === undefined) return '';
+    if (typeof v === 'number') return Number.isFinite(v) ? String(v) : '';
+    let s = String(v);
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;   // keep spreadsheets from treating text as a formula
+    return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  },
+  build: (rows) => rows.map((r) => r.map(Csv.cell).join(',')).join('\r\n'),
+  download(filename, rows) {
+    const blob = new Blob(['﻿' + Csv.build(rows)], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  },
+};
+
 // ===== Catalogue =====
 // Adding a tool or lesson = one entry here + one <template>.
 const CATALOG = [
@@ -141,6 +290,7 @@ const CATALOG = [
     topics: ['Thermodynamics', 'S220 rig'],
     keywords: ['rankine', 'cycle', 'boiler', 'condenser', 'feed pump', 'T-s', 'entropy', 'quiz'],
     templateId: 'tpl-rankine-explainer',
+    needs: ['steam'],
     init: initPlaceholder,
   },
   {
@@ -152,6 +302,7 @@ const CATALOG = [
     topics: ['Thermodynamics', 'S220 rig'],
     keywords: ['torque', 'power', 'brake', 'steam consumption', 'SSC', 'speed', 'observation', 'test'],
     templateId: 'tpl-turbine-performance',
+    needs: [],
     init: initPlaceholder,
   },
 ];
@@ -280,13 +431,31 @@ document.getElementById('clear-filters').addEventListener('click', () => {
 
 // ===== Router =====
 let mounted = null;
+let mountedEntry = null;
+
+// Tells the student when an item's external library is still loading or failed to load.
+function renderDepBanner() {
+  const banner = document.getElementById('dep-banner');
+  const needsSteam = mountedEntry && mountedEntry.needs.includes('steam');
+  if (!needsSteam || Steam.status === 'ready') {
+    banner.hidden = true;
+    return;
+  }
+  banner.textContent = Steam.status === 'loading'
+    ? 'Loading steam tables…'
+    : 'The steam tables couldn’t load (no internet connection?). Anything that needs steam properties is unavailable — reconnect and reload the page.';
+  banner.hidden = false;
+}
+window.addEventListener('steamstatus', renderDepBanner);
 
 function unmount() {
   if (mounted) {
     mounted.destroy();
     mounted = null;
   }
+  mountedEntry = null;
   els.mount.replaceChildren();
+  renderDepBanner();
 }
 
 function showHome(params) {
@@ -312,6 +481,8 @@ function showItem(entry) {
   els.itemTitle.textContent = entry.title;
   const fragment = document.getElementById(entry.templateId).content.cloneNode(true);
   els.mount.append(fragment);
+  mountedEntry = entry;
+  renderDepBanner();
   mounted = entry.init(els.mount) || { destroy() {} };
   els.home.hidden = true;
   els.item.hidden = false;
