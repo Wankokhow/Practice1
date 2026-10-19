@@ -126,6 +126,10 @@ history.)
   (`tsDiagram`, zoomed 40–180 °C, dome clipped) and state list from
   `rankineCycle(5.6, 0.5, η=0.134)` — note the actual turbine exit is
   slightly superheated. 7-question quiz with explanations and score.
+  `createTurbineAnimation(container)` (rAF, returns `{destroy}`): rotor
+  "down the shaft" (45 brass blades) + unrolled blade row with the C-D
+  nozzle at 20° — shown when the turbine is tapped in Explore and in the
+  3 → 4 walkthrough step; play/pause, paused under reduced motion.
   T–s parts show loading/failed messages; the rest works without steam.
 - `[x]` **Phase 5 — Polish**: audited every view at 320/375/768/1280px in
   both themes with axe-core (WCAG 2.2 AA) — clean; no horizontal scroll;

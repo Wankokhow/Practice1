@@ -150,6 +150,7 @@
       <p data-role="step-count" class="font-mono text-xs uppercase text-steel"></p>
       <h2 data-role="step-title" tabindex="-1" class="mt-1 font-display font-semibold text-2xl uppercase tracking-wide outline-none"></h2>
       <div data-role="step-text" class="mt-2 flex flex-col gap-2 text-[15px] leading-normal"></div>
+      <div data-role="step-anim" class="mt-3" hidden></div>
       <div class="mt-4 flex flex-wrap items-center justify-between gap-2">
         <button type="button" data-action="step-prev" class="h-11 px-4 border border-line rounded-[2px] font-display font-semibold uppercase tracking-wider text-sm hover:border-accent disabled:opacity-40">Back</button>
         <ol data-role="step-dots" class="order-first w-full flex justify-center gap-1 sm:order-none sm:w-auto" aria-label="Steps"></ol>
@@ -1186,6 +1187,7 @@ const RANKINE_STEPS = [
   },
   {
     title: '3 → 4 · Turbine',
+    animation: true,
     comps: ['throttle', 'turbine', 'pipe-steam', 'pipe-exhaust'],
     segs: ['turbine', 'actual'],
     text: [
@@ -1325,6 +1327,172 @@ function tsDiagram(c) {
   </svg>`;
 }
 
+// ===== Impulse turbine animation: nozzle jet onto a single row of brass blades =====
+// Two linked views — the rotor seen down the shaft, and the blade row "unrolled" — driven by
+// one rAF loop. Returns { destroy }. Starts paused when the OS asks for reduced motion.
+let turbineAnimSeq = 0;
+function createTurbineAnimation(container) {
+  const id = ++turbineAnimSeq;
+  const BLADES = 45, NOZZLE_DEG = 20;
+  const brass = `url(#rk-brass-${id})`;
+  const brassDefs = `<defs><linearGradient id="rk-brass-${id}" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#e3c46a"/><stop offset="0.55" stop-color="#b8902f"/><stop offset="1" stop-color="#8a6a1e"/></linearGradient></defs>`;
+  const label = 'fill-muted font-mono text-[9px]';
+  // Convergent–divergent nozzle drawn along +x with its exit at the origin.
+  const nozzle = `<path d="M-62 -11 L-30 -2.5 L0 -6.5 L0 6.5 L-30 2.5 L-62 11 Z" fill="none" stroke="currentColor" class="fill-surface stroke-fg stroke-[1.4]"/>`;
+
+  // --- View 1: rotor seen down the shaft ---
+  const C = { x: 100, y: 108 }, R_IN = 60, R_OUT = 74;
+  let bladeRing = '';
+  for (let k = 0; k < BLADES; k++) {
+    // Each blade is a small curved bucket on the rim, drawn at 12 o'clock then rotated into place.
+    bladeRing += `<path transform="rotate(${(360 / BLADES) * k} ${C.x} ${C.y})" d="M${C.x - 2.6} ${C.y - R_OUT} Q${C.x + 2.2} ${C.y - (R_IN + R_OUT) / 2} ${C.x - 2.6} ${C.y - R_IN} L${C.x - 0.6} ${C.y - R_IN} Q${C.x + 4} ${C.y - (R_IN + R_OUT) / 2} ${C.x - 0.6} ${C.y - R_OUT} Z" fill="${brass}" stroke="#6b5216" stroke-width="0.4"/>`;
+  }
+  const discSvg = `<svg viewBox="0 0 200 200" class="w-full h-auto block" role="img" aria-labelledby="rk-disc-${id}">
+    <title id="rk-disc-${id}">Rotor seen down the shaft: a disc with 45 brass blades round its rim turns clockwise while one nozzle fires steam tangentially onto the blades at the top.</title>
+    ${brassDefs}
+    <g data-anim="disc">
+      <circle cx="${C.x}" cy="${C.y}" r="${R_IN + 1}" fill="#9aa3aa" class="fill-line stroke-muted stroke-[1]"/>
+      <circle cx="${C.x}" cy="${C.y}" r="${R_IN - 14}" fill="none" class="stroke-muted stroke-[0.6]" stroke-dasharray="2 3"/>
+      <line x1="${C.x}" y1="${C.y - R_IN + 6}" x2="${C.x}" y2="${C.y - 22}" class="stroke-muted stroke-[1]"/>
+      ${bladeRing}
+    </g>
+    <circle cx="${C.x}" cy="${C.y}" r="9" fill="#666" class="fill-muted"/>
+    <g transform="translate(${C.x - 16} ${C.y - R_OUT - 15}) rotate(8) scale(0.75)">${nozzle}</g>
+    <text x="8" y="44" class="${label}">nozzle</text>
+    <g data-anim="disc-jet"></g>
+    <path d="M${C.x + 72} ${C.y - 50} A 88 88 0 0 1 ${C.x + 86} ${C.y + 10}" fill="none" class="stroke-accent-ink stroke-[1.4]" stroke="currentColor"/>
+    <polygon points="${C.x + 86},${C.y + 18} ${C.x + 81},${C.y + 8} ${C.x + 91},${C.y + 8}" class="fill-accent-ink"/>
+    <text x="${C.x + 98}" y="${C.y - 56}" text-anchor="end" class="${label}">clockwise</text>
+    <text x="100" y="196" text-anchor="middle" class="${label}">45 brass blades · 45 mm pitch circle</text>
+  </svg>`;
+
+  // --- View 2: the blade row unrolled into a straight line ---
+  const Y_IN = 100, Y_OUT = 150, PITCH = 26, ROW_W = 260;
+  const N0 = { x: 100, y: 62 };                                  // nozzle exit
+  const rad = (NOZZLE_DEG * Math.PI) / 180, DIR = { x: Math.cos(rad), y: Math.sin(rad) };
+  const JET_LEN = (Y_IN - N0.y) / DIR.y, HIT = { x: N0.x + DIR.x * JET_LEN, y: Y_IN };
+  // Bucket camber: enters heading down-right, turned back to leave heading down-left (40° each side).
+  const bucket = (x) => `M${x} ${Y_IN} C${x + 30} ${Y_IN + 18} ${x + 30} ${Y_OUT - 18} ${x} ${Y_OUT} L${x - 5} ${Y_OUT} C${x + 20} ${Y_OUT - 18} ${x + 20} ${Y_IN + 18} ${x - 5} ${Y_IN} Z`;
+  let row = '';
+  for (let x = -PITCH * 2; x < ROW_W + PITCH * 2; x += PITCH) row += `<path d="${bucket(x)}" fill="${brass}" stroke="#6b5216" stroke-width="0.5"/>`;
+  const rowSvg = `<svg viewBox="0 0 260 200" class="w-full h-auto block" role="img" aria-labelledby="rk-row-${id}">
+    <title id="rk-row-${id}">Blade row unrolled: steam accelerates through a convergent–divergent nozzle angled 20 degrees to the plane of rotation, crosses as a jet, is turned back by the moving curved brass blades, and leaves towards the condenser while the blades move to the right.</title>
+    <clipPath id="rk-rowclip-${id}"><rect x="0" y="${Y_IN - 2}" width="${ROW_W}" height="${Y_OUT - Y_IN + 4}"/></clipPath>
+    <line x1="0" y1="${Y_IN}" x2="${ROW_W}" y2="${Y_IN}" class="stroke-line stroke-[0.8]" stroke-dasharray="3 3"/>
+    <line x1="0" y1="${Y_OUT}" x2="${ROW_W}" y2="${Y_OUT}" class="stroke-line stroke-[0.8]" stroke-dasharray="3 3"/>
+    <g clip-path="url(#rk-rowclip-${id})"><g data-anim="row">${row}</g></g>
+    <g transform="translate(${N0.x} ${N0.y}) rotate(${NOZZLE_DEG})">${nozzle}</g>
+    <path d="M${N0.x + 26} ${N0.y} A 26 26 0 0 1 ${N0.x + 26 * DIR.x} ${N0.y + 26 * DIR.y}" fill="none" class="stroke-accent-ink stroke-[1]" stroke="currentColor"/>
+    <line x1="${N0.x}" y1="${N0.y}" x2="${N0.x + 40}" y2="${N0.y}" class="stroke-muted stroke-[0.6]" stroke-dasharray="2 2"/>
+    <text x="${N0.x + 30}" y="${N0.y - 3}" class="fill-accent-ink font-mono text-[9px] font-semibold">20°</text>
+    <text x="4" y="18" class="${label}">steam in</text>
+    <text x="4" y="29" class="${label}">~5 bar</text>
+    <text x="${N0.x - 40}" y="${N0.y + 20}" class="${label}">throat</text>
+    <g data-anim="row-jet"></g>
+    <text x="4" y="${Y_OUT + 16}" class="${label}">blades move</text>
+    <polygon points="78,${Y_OUT + 13} 68,${Y_OUT + 8} 68,${Y_OUT + 18}" class="fill-accent-ink"/>
+    <text x="130" y="186" text-anchor="middle" class="${label}">exhaust to condenser (~0.5 bar) ↓</text>
+  </svg>`;
+
+  // Side by side only when the container itself is wide enough (it may sit in a narrow side panel).
+  container.innerHTML = `<div class="@container"><div class="grid grid-cols-1 @md:grid-cols-2 gap-3">
+      <figure class="border border-line rounded-[2px] p-2 bg-bg"><figcaption class="font-display font-semibold text-sm uppercase tracking-wider text-center">Down the shaft</figcaption>${discSvg}</figure>
+      <figure class="border border-line rounded-[2px] p-2 bg-bg"><figcaption class="font-display font-semibold text-sm uppercase tracking-wider text-center">Blade row, unrolled</figcaption>${rowSvg}</figure>
+    </div></div>
+    <div class="mt-2 flex items-center justify-between gap-3">
+      <p class="text-xs text-muted leading-snug">Slowed right down — the real rotor turns at up to 40 000 rev/min.</p>
+      <button type="button" data-action="turbine-play" class="h-11 px-3 shrink-0 border border-line rounded-[2px] font-display font-semibold uppercase tracking-wider text-sm hover:border-accent"></button>
+    </div>`;
+
+  const disc = container.querySelector('[data-anim="disc"]');
+  const rowG = container.querySelector('[data-anim="row"]');
+  const discJet = container.querySelector('[data-anim="disc-jet"]');
+  const rowJet = container.querySelector('[data-anim="row-jet"]');
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const dot = (parent, r) => {
+    const c = document.createElementNS(svgNS, 'circle');
+    c.setAttribute('r', r);
+    c.setAttribute('fill', '#7fb2e5');
+    c.setAttribute('class', 'fill-steel');
+    parent.append(c);
+    return c;
+  };
+  const PERIOD = 1.8, N = 26;                     // seconds per particle trip, particles in flight
+  const rowDots = Array.from({ length: N }, () => dot(rowJet, 1.7));
+  const discDots = Array.from({ length: 14 }, () => dot(discJet, 1.6));
+  const BLADE_SPEED = 34;                         // px/s in the unrolled view
+  const DISC_DEG_PER_S = BLADE_SPEED / (2 * Math.PI * ((R_IN + R_OUT) / 2)) * 360 * (200 / 260);
+
+  // Disc nozzle exit and where its jet meets the rim (12 o'clock, slightly ahead).
+  const dExit = { x: C.x - 16, y: C.y - R_OUT - 15 };
+  const dHit = { x: C.x + 6, y: C.y - (R_IN + R_OUT) / 2 };
+  const bez = (p0, p1, p2, p3, t) => {
+    const u = 1 - t;
+    return u * u * u * p0 + 3 * u * u * t * p1 + 3 * u * t * t * p2 + t * t * t * p3;
+  };
+
+  function draw(time) {
+    const shift = (BLADE_SPEED * time) % PITCH;
+    rowG.setAttribute('transform', `translate(${shift} 0)`);
+    disc.setAttribute('transform', `rotate(${(DISC_DEG_PER_S * time) % 360} ${C.x} ${C.y})`);
+
+    rowDots.forEach((d, i) => {
+      const t = ((time / PERIOD) + i / N) % 1;
+      let x, y, o = 1;
+      if (t < 0.18) {                              // accelerating through the nozzle
+        const k = t / 0.18, s = -60 + 60 * k * k;
+        x = N0.x + s * DIR.x; y = N0.y + s * DIR.y; o = 0.35 + 0.65 * k;
+      } else if (t < 0.42) {                       // free jet at 20°
+        const k = (t - 0.18) / 0.24;
+        x = N0.x + DIR.x * JET_LEN * k; y = N0.y + DIR.y * JET_LEN * k;
+      } else if (t < 0.74) {                       // turned by a bucket that moves with the row
+        const k = (t - 0.42) / 0.32;
+        x = HIT.x + bez(0, 26, 26, 0, k) + BLADE_SPEED * (t - 0.42) * PERIOD;
+        y = bez(Y_IN, Y_IN + 18, Y_OUT - 18, Y_OUT, k);
+      } else {                                     // leaves slowly, almost axially
+        const k = (t - 0.74) / 0.26;
+        x = HIT.x + BLADE_SPEED * 0.32 * PERIOD - 4 * k; y = Y_OUT + 30 * k; o = 1 - k;
+      }
+      d.setAttribute('cx', x.toFixed(1)); d.setAttribute('cy', y.toFixed(1)); d.setAttribute('opacity', o.toFixed(2));
+    });
+
+    discDots.forEach((d, i) => {
+      const t = ((time / (PERIOD * 0.6)) + i / discDots.length) % 1;
+      const x = dExit.x + (dHit.x - dExit.x) * t, y = dExit.y + (dHit.y - dExit.y) * t;
+      d.setAttribute('cx', x.toFixed(1)); d.setAttribute('cy', y.toFixed(1));
+      d.setAttribute('opacity', (t > 0.8 ? (1 - t) * 5 : 1).toFixed(2));   // fades as it passes into the blades
+    });
+  }
+
+  let playing = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let frame = 0, last = null, clock = 0.6;
+  const btn = container.querySelector('[data-action="turbine-play"]');
+  function tick(now) {
+    if (last !== null) clock += Math.min(0.05, (now - last) / 1000);
+    last = now;
+    draw(clock);
+    frame = requestAnimationFrame(tick);
+  }
+  function setPlaying(on) {
+    playing = on;
+    btn.textContent = on ? 'Pause' : 'Play';
+    btn.setAttribute('aria-pressed', String(on));
+    cancelAnimationFrame(frame);
+    last = null;
+    if (on) frame = requestAnimationFrame(tick); else draw(clock);
+  }
+  btn.addEventListener('click', () => setPlaying(!playing));
+  setPlaying(playing);
+
+  return {
+    destroy() {
+      cancelAnimationFrame(frame);
+      container.replaceChildren();
+    },
+  };
+}
+
 function initRankineLesson(root) {
   const q = (sel) => root.querySelector(sel);
   const cleanups = [];
@@ -1351,6 +1519,9 @@ function initRankineLesson(root) {
 
   // ----- Explore: tap a component -----
   const info = q('[data-role="comp-info"]');
+  let exploreAnim = null;   // turbine animation, only while the turbine is selected
+  let stepAnim = null;      // turbine animation in the walkthrough's turbine step
+  cleanups.push(() => { exploreAnim?.destroy(); stepAnim?.destroy(); });
   const exploreSvg = q('[data-role="schematic-explore"]');
   function showComponent(id) {
     exploreSvg.querySelectorAll('[data-comp][role="button"]').forEach((g) => {
@@ -1368,6 +1539,12 @@ function initRankineLesson(root) {
     const list = el('ul', 'mt-2 flex flex-col gap-1.5 list-disc pl-5 text-[15px] leading-normal text-muted');
     c.facts.forEach((f) => list.append(el('li', '', f)));
     info.append(list);
+    if (exploreAnim) { exploreAnim.destroy(); exploreAnim = null; }
+    if (id === 'turbine') {
+      const box = el('div', 'mt-3');
+      info.append(box);
+      exploreAnim = createTurbineAnimation(box);
+    }
   }
   info.replaceChildren(
     el('h2', 'font-display font-semibold text-xl uppercase tracking-wide', 'Pick a component'),
@@ -1407,6 +1584,10 @@ function initRankineLesson(root) {
     q('[data-role="step-count"]').textContent = `Step ${i + 1} of ${RANKINE_STEPS.length}`;
     q('[data-role="step-title"]').textContent = st.title;
     q('[data-role="step-text"]').replaceChildren(...st.text.map((t) => el('p', '', t)));
+    const animBox = q('[data-role="step-anim"]');
+    if (stepAnim && !st.animation) { stepAnim.destroy(); stepAnim = null; }
+    if (st.animation && !stepAnim) stepAnim = createTurbineAnimation(animBox);
+    animBox.hidden = !st.animation;
     q('[data-action="step-prev"]').disabled = i === 0;
     q('[data-action="step-next"]').disabled = i === RANKINE_STEPS.length - 1;
     [...dots.querySelectorAll('button')].forEach((b, j) => {
