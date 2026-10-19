@@ -118,11 +118,15 @@ history.)
   per measure (no dual axes). Series colour `--series` validated per
   theme; charts restyle on `themechange`. Auto-save under
   `perf:single|mode|test|tests`; "Reset to manual data"; CSV export.
-- `[ ]` **Phase 4 — Rankine Cycle Explainer**: interactive SVG schematic
-  (tap a component for its role, animated flow); 4-step walkthrough
-  highlighting schematic + T–s diagram (dome and states from the steam
-  library at typical S220 conditions ~5.6 bar in / 0.5 bar out); short
-  self-check quiz with instant feedback.
+- `[x]` **Phase 4 — Rankine Cycle Explainer** (`initRankineLesson`):
+  Explore / Walkthrough / Quiz tabs (shared `wireTabs`). SVG schematic
+  (`rankineSchematic`) with 7 tappable components (keyboard too) and a
+  pausable flow animation (paused under reduced motion). 5-step
+  walkthrough highlights schematic parts + T–s segments; T–s diagram
+  (`tsDiagram`, zoomed 40–180 °C, dome clipped) and state list from
+  `rankineCycle(5.6, 0.5, η=0.134)` — note the actual turbine exit is
+  slightly superheated. 7-question quiz with explanations and score.
+  T–s parts show loading/failed messages; the rest works without steam.
 - `[ ]` **Phase 5 — Polish**: no horizontal scroll at 375px, both themes
   legible, deep links, no leaked loops on navigation, graceful CDN
   failure.
