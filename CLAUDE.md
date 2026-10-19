@@ -109,10 +109,15 @@ history.)
   entries (each runs a timer to prove `destroy()` on navigation).
 - `[x]` **Phase 2 — Shared modules**: vet + wrap steam library, S220
   constants, `MANUAL_DATA` with errata notes, storage + CSV helpers.
-- `[ ]` **Phase 3 — Turbine Performance Calculator**: single-reading mode
-  with worked steps (torque, power, steam flow, SSC); test-table mode
-  mirroring the observation sheets, preloaded from the manual, with
-  Chart.js (CDN) plots of torque/power/SSC vs speed, auto-save, CSV.
+- `[x]` **Phase 3 — Turbine Performance Calculator** (`initTurbineTool`):
+  single-reading mode (defaults to manual B.4) with results, sanity
+  warnings and worked steps; test-table mode (manual tests A–K + "My
+  readings") with responsive reading rows (results under inputs on
+  phones), add/remove rows, errata box, Chart.js 4.5.1 (jsDelivr, loaded
+  on demand via `Libs.load`) torque/power/SSC-vs-speed charts, one chart
+  per measure (no dual axes). Series colour `--series` validated per
+  theme; charts restyle on `themechange`. Auto-save under
+  `perf:single|mode|test|tests`; "Reset to manual data"; CSV export.
 - `[ ]` **Phase 4 — Rankine Cycle Explainer**: interactive SVG schematic
   (tap a component for its role, animated flow); 4-step walkthrough
   highlighting schematic + T–s diagram (dome and states from the steam

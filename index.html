@@ -44,6 +44,7 @@
     --fg: #16181a; --muted: #555d64;
     --accent: #f08a24; --accent-ink: #b35c00; --on-accent: #16181a;
     --steel: #2f6aa3;
+    --series: #b35c00;          /* chart marks; validated vs surface (dataviz validator) */
     color-scheme: light;
   }
   .dark {
@@ -51,6 +52,7 @@
     --fg: #eceff1; --muted: #a3aab0;
     --accent: #f08a24; --accent-ink: #f5a04f; --on-accent: #16181a;
     --steel: #7fb2e5;
+    --series: #d6771b;
     color-scheme: dark;
   }
 </style>
@@ -121,10 +123,89 @@
 </template>
 
 <template id="tpl-turbine-performance">
-  <div class="bg-surface border border-line rounded-[2px] p-4">
-    <p class="text-muted">Placeholder — single-reading and test-table modes arrive in Phase 3.</p>
-    <p class="mt-3 font-mono text-sm">Mounted for <span data-role="uptime" class="text-accent-ink">0</span> s</p>
+  <p class="text-muted text-[15px] leading-normal">Torque, shaft power and specific steam consumption from the S220 observation sheet (manual experiment 2). Readings save on this device as you type.</p>
+
+  <div role="tablist" aria-label="Calculator mode" class="mt-4 grid grid-cols-2 border border-line rounded-[2px] overflow-hidden">
+    <button type="button" role="tab" id="perf-tab-single" aria-controls="perf-panel-single" data-mode="single" class="h-12 font-display font-semibold text-[16px] uppercase tracking-wider">Single reading</button>
+    <button type="button" role="tab" id="perf-tab-table" aria-controls="perf-panel-table" data-mode="table" class="h-12 font-display font-semibold text-[16px] uppercase tracking-wider border-l border-line">Test table</button>
   </div>
+
+  <!-- ===== Single reading ===== -->
+  <section id="perf-panel-single" role="tabpanel" aria-labelledby="perf-tab-single" class="mt-4 flex flex-col gap-4">
+    <div class="bg-surface border border-line rounded-[2px] p-4">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h2 class="font-display font-semibold text-lg uppercase tracking-wide">Readings</h2>
+        <div class="flex gap-2">
+          <button type="button" data-action="single-example" class="h-11 px-3 border border-line rounded-[2px] font-display font-semibold uppercase tracking-wider text-sm hover:border-accent">Manual example</button>
+          <button type="button" data-action="single-clear" class="h-11 px-3 border border-line rounded-[2px] font-display font-semibold uppercase tracking-wider text-sm hover:border-accent">Clear</button>
+        </div>
+      </div>
+      <p data-role="single-source" class="mt-1 font-mono text-xs text-muted"></p>
+      <div class="mt-3 grid grid-cols-2 gap-3" data-role="single-fields"></div>
+    </div>
+
+    <div data-role="single-errata" class="border border-steel/60 bg-surface rounded-[2px] p-4 text-[15px]" hidden></div>
+
+    <div class="bg-surface border border-line rounded-[2px] p-4">
+      <h2 class="font-display font-semibold text-lg uppercase tracking-wide">Results</h2>
+      <dl data-role="single-results" class="mt-3 flex flex-col gap-px bg-line border border-line"></dl>
+      <p data-role="single-warnings" class="mt-3 text-[15px] text-accent-ink" hidden></p>
+    </div>
+
+    <details class="bg-surface border border-line rounded-[2px] p-4" open>
+      <summary class="font-display font-semibold text-lg uppercase tracking-wide cursor-pointer min-h-[28px]">Worked steps</summary>
+      <ol data-role="single-steps" class="mt-3 flex flex-col gap-3"></ol>
+    </details>
+  </section>
+
+  <!-- ===== Test table ===== -->
+  <section id="perf-panel-table" role="tabpanel" aria-labelledby="perf-tab-table" class="mt-4 flex flex-col gap-4" hidden>
+    <div class="bg-surface border border-line rounded-[2px] p-4">
+      <label class="flex flex-col gap-1 text-sm text-muted">Test
+        <select data-role="test-select" class="h-12 px-2 bg-bg border border-line rounded-[2px] text-base text-fg"></select>
+      </label>
+      <p data-role="test-status" class="mt-2 font-mono text-xs text-muted"></p>
+      <div class="mt-3 grid grid-cols-2 gap-3" data-role="test-fields"></div>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <button type="button" data-action="test-reset" class="h-11 px-3 border border-line rounded-[2px] font-display font-semibold uppercase tracking-wider text-sm hover:border-accent"></button>
+        <button type="button" data-action="test-csv" class="h-11 px-3 border border-line rounded-[2px] font-display font-semibold uppercase tracking-wider text-sm hover:border-accent">Export CSV</button>
+      </div>
+    </div>
+
+    <div data-role="test-errata" class="border border-steel/60 bg-surface rounded-[2px] p-4 text-[15px]" hidden></div>
+
+    <div class="bg-surface border border-line rounded-[2px] p-4">
+      <h2 class="font-display font-semibold text-lg uppercase tracking-wide">Readings &amp; results</h2>
+      <p data-role="test-flow" class="mt-1 font-mono text-sm"></p>
+      <!-- Phone: inputs on one line, results underneath. sm+: one line per reading. -->
+      <div class="mt-3 grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1fr)_2.75rem] sm:grid-cols-[3rem_8rem_8rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_2.75rem] gap-x-2 pb-2 text-sm text-muted" aria-hidden="true">
+        <span>Row</span>
+        <span>Speed <span class="font-mono text-xs">rev/min</span></span>
+        <span>Load <span class="font-mono text-xs">N</span></span>
+        <span class="hidden sm:block text-right">Torque <span class="font-mono text-xs">N·m</span></span>
+        <span class="hidden sm:block text-right">Power <span class="font-mono text-xs">W</span></span>
+        <span class="hidden sm:block text-right">SSC <span class="font-mono text-xs">kg/kWh</span></span>
+      </div>
+      <ol data-role="test-rows" class="border-b border-line"></ol>
+      <button type="button" data-action="row-add" class="mt-3 h-11 px-3 border border-line rounded-[2px] font-display font-semibold uppercase tracking-wider text-sm hover:border-accent">+ Add row</button>
+    </div>
+
+    <div class="flex flex-col gap-4" data-role="charts">
+      <p data-role="charts-status" class="text-[15px] text-muted" hidden></p>
+      <figure class="bg-surface border border-line rounded-[2px] p-4">
+        <figcaption class="font-display font-semibold text-lg uppercase tracking-wide">Torque vs speed <span class="font-mono text-xs normal-case text-muted">N·m</span></figcaption>
+        <div class="mt-2 relative h-56"><canvas data-chart="torque" role="img" aria-label="Line chart of brake torque against rotational speed; values are in the table above"></canvas></div>
+      </figure>
+      <figure class="bg-surface border border-line rounded-[2px] p-4">
+        <figcaption class="font-display font-semibold text-lg uppercase tracking-wide">Shaft power vs speed <span class="font-mono text-xs normal-case text-muted">W</span></figcaption>
+        <div class="mt-2 relative h-56"><canvas data-chart="power" role="img" aria-label="Line chart of shaft power against rotational speed; values are in the table above"></canvas></div>
+      </figure>
+      <figure class="bg-surface border border-line rounded-[2px] p-4">
+        <figcaption class="font-display font-semibold text-lg uppercase tracking-wide">Specific steam consumption vs speed <span class="font-mono text-xs normal-case text-muted">kg/kWh</span></figcaption>
+        <div class="mt-2 relative h-56"><canvas data-chart="ssc" role="img" aria-label="Line chart of specific steam consumption against rotational speed; values are in the table above"></canvas></div>
+      </figure>
+    </div>
+  </section>
 </template>
 
 <script>
@@ -210,7 +291,7 @@ const MANUAL_DATA = [
     rows: [[39.6, 0.83], [30.6, 1.02], [19.3, 1.21], [12.6, 1.29], [9.9, 1.33], [5.0, 1.42]],
     errata: [
       'Manual p.48 lists B.1 torque as 9.1×10⁻³ N·m; 0.83 N × 0.023 m = 19.1×10⁻³ N·m (its 79.3 W power uses the correct value).',
-      'Manual p.47 rounds B.4 torque to 0.03 N·m, giving 39.6 W; unrounded it is 0.0297 N·m and 39.2 W.',
+      'Manual p.47 rounds B.4 torque to 0.03 N·m, giving 39.6 W; unrounded it is 0.0297 N·m and 39.1 W.',
     ] },
   { id: 'C', experiment: '2a', page: 46, atmMbar: 1003, ambientC: 22, inletBarG: 4.6, exhaustBarG: -0.5, condensateCm3: 200, condensateTimeS: 113,
     rows: [[38.3, 1.02], [30.6, 1.20], [22.1, 1.31], [14.0, 1.38], [6.0, 1.44]] },
@@ -278,6 +359,26 @@ const Csv = {
   },
 };
 
+// ===== Classic-script libraries loaded on demand (cached; a failed load can be retried) =====
+const CHART_LIB_URL = 'https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js';
+const Libs = {
+  pending: {},
+  load(url) {
+    if (!Libs.pending[url]) {
+      Libs.pending[url] = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = url;
+        script.onload = resolve;
+        script.onerror = () => { delete Libs.pending[url]; script.remove(); reject(new Error('Failed to load ' + url)); };
+        document.head.append(script);
+      });
+    }
+    return Libs.pending[url];
+  },
+};
+
+const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
 // ===== Catalogue =====
 // Adding a tool or lesson = one entry here + one <template>.
 const CATALOG = [
@@ -303,7 +404,7 @@ const CATALOG = [
     keywords: ['torque', 'power', 'brake', 'steam consumption', 'SSC', 'speed', 'observation', 'test'],
     templateId: 'tpl-turbine-performance',
     needs: [],
-    init: initPlaceholder,
+    init: initTurbineTool,
   },
 ];
 
@@ -319,10 +420,538 @@ function initPlaceholder(root) {
   return { destroy() { clearInterval(timer); } };
 }
 
+// ===== Tool: Turbine Performance Calculator =====
+const PERF_FIELDS = {
+  atmMbar: { label: 'Atmospheric pressure', unit: 'mbar' },
+  inletBarG: { label: 'Inlet pressure', unit: 'bar g' },
+  exhaustBarG: { label: 'Exhaust pressure', unit: 'bar g', signed: true },
+  rpm: { label: 'Speed', unit: 'rev/min' },
+  loadN: { label: 'Brake load', unit: 'N' },
+  condensateCm3: { label: 'Condensate', unit: 'cm³' },
+  condensateTimeS: { label: 'Collection time', unit: 's' },
+};
+const SINGLE_KEYS = ['atmMbar', 'inletBarG', 'exhaustBarG', 'rpm', 'loadN', 'condensateCm3', 'condensateTimeS'];
+const TEST_KEYS = ['atmMbar', 'inletBarG', 'exhaustBarG', 'condensateCm3', 'condensateTimeS'];
+const MY_TEST_ID = 'mine';
+
+const fmt = (v, dp) => (typeof v === 'number' && Number.isFinite(v) ? v.toFixed(dp) : '—');
+const parseNum = (str) => {
+  const t = String(str ?? '').trim();
+  if (t === '') return { value: null, valid: true };
+  const n = Number(t);
+  return Number.isFinite(n) ? { value: n, valid: true } : { value: null, valid: false };
+};
+const strOf = (n) => (n === null || n === undefined ? '' : String(n));
+
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+let fieldSeq = 0;
+// A labelled text input for one number. type=text keeps partial entries like "-" or "1." while typing.
+function numberField(key, value, onInput) {
+  const f = PERF_FIELDS[key];
+  const id = `perf-field-${++fieldSeq}`;
+  const wrap = el('div', 'flex flex-col gap-1');
+  const label = el('label', 'text-sm text-muted');
+  label.htmlFor = id;
+  label.append(f.label + ' ', el('span', 'font-mono text-xs', `(${f.unit})`));
+  const input = el('input', 'h-12 w-full min-w-0 px-3 bg-bg border border-line rounded-[2px] font-mono text-[17px] text-fg focus:border-accent outline-none aria-[invalid=true]:border-accent-ink');
+  input.id = id;
+  input.type = 'text';
+  input.autocomplete = 'off';
+  if (!f.signed) input.inputMode = 'decimal';   // the decimal keypad has no minus sign on some phones
+  input.value = value;
+  input.addEventListener('input', () => {
+    input.setAttribute('aria-invalid', String(!parseNum(input.value).valid));
+    onInput(input.value);
+  });
+  input.setAttribute('aria-invalid', String(!parseNum(value).valid));
+  wrap.append(label, input);
+  return wrap;
+}
+
+function manualTest(id) { return MANUAL_DATA.find((t) => t.id === id); }
+
+function manualTestState(t) {
+  const fields = {};
+  for (const k of TEST_KEYS) fields[k] = strOf(t[k]);
+  return { fields, rows: t.rows.map((r) => ({ rpm: strOf(r.rpm), loadN: strOf(r.loadN) })) };
+}
+
+function blankTestState() {
+  return {
+    fields: { atmMbar: '1013', inletBarG: '', exhaustBarG: '', condensateCm3: '200', condensateTimeS: '' },
+    rows: Array.from({ length: 6 }, () => ({ rpm: '', loadN: '' })),
+  };
+}
+
+const SINGLE_EXAMPLE = (() => {
+  const t = manualTest('B'), r = t.rows[3];
+  const values = {};
+  for (const k of SINGLE_KEYS) values[k] = strOf(k === 'rpm' ? r.rpm : k === 'loadN' ? r.loadN : t[k]);
+  return { values, source: r.label };
+})();
+
+function renderErrata(box, notes) {
+  box.replaceChildren();
+  box.hidden = notes.length === 0;
+  if (!notes.length) return;
+  box.append(el('p', 'font-display font-semibold uppercase tracking-wide text-steel', 'Differs from the printed manual'));
+  const list = el('ul', 'mt-2 flex flex-col gap-2 list-disc pl-5 leading-normal');
+  notes.forEach((n) => list.append(el('li', '', n)));
+  box.append(list);
+}
+
+function initTurbineTool(root) {
+  const q = (sel) => root.querySelector(sel);
+  const cleanups = [];
+  let destroyed = false;
+
+  // ----- Mode tabs -----
+  const tabs = [...root.querySelectorAll('[role="tab"]')];
+  const panels = { single: q('#perf-panel-single'), table: q('#perf-panel-table') };
+  function setMode(mode) {
+    tabs.forEach((t) => {
+      const on = t.dataset.mode === mode;
+      t.setAttribute('aria-selected', String(on));
+      t.tabIndex = on ? 0 : -1;
+      t.classList.toggle('bg-accent', on);
+      t.classList.toggle('text-on-accent', on);
+      t.classList.toggle('bg-surface', !on);
+    });
+    panels.single.hidden = mode !== 'single';
+    panels.table.hidden = mode !== 'table';
+    Store.set('perf:mode', mode);
+    if (mode === 'table') ensureCharts();
+  }
+  tabs.forEach((t) => {
+    t.addEventListener('click', () => setMode(t.dataset.mode));
+    t.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      const next = tabs[(tabs.indexOf(t) + 1) % tabs.length];
+      setMode(next.dataset.mode);
+      next.focus();
+    });
+  });
+
+  // ----- Single reading -----
+  let single = Store.get('perf:single', null) || structuredClone(SINGLE_EXAMPLE);
+
+  function singleNumbers() {
+    const out = {}; let invalid = false;
+    for (const k of SINGLE_KEYS) {
+      const p = parseNum(single.values[k]);
+      out[k] = p.value;
+      if (!p.valid) invalid = true;
+    }
+    return { nums: out, invalid };
+  }
+
+  function renderSingleFields() {
+    const box = q('[data-role="single-fields"]');
+    box.replaceChildren(...SINGLE_KEYS.map((k) => numberField(k, single.values[k], (v) => {
+      single.values[k] = v;
+      single.source = null;
+      Store.set('perf:single', single);
+      updateSingle();
+    })));
+  }
+
+  function resultRow(label, value, unit, emphasis) {
+    const row = el('div', 'flex justify-between items-baseline gap-3 px-3 py-2.5 bg-bg');
+    row.append(el('dt', 'text-sm text-muted', label));
+    const dd = el('dd', 'font-mono text-[19px] font-semibold text-right ' + (emphasis ? 'text-accent-ink' : ''), value);
+    dd.append(' ', el('span', 'text-sm font-normal text-muted', unit));
+    row.append(dd);
+    return row;
+  }
+
+  function step(title, lines, missing) {
+    const li = el('li', 'border-l-2 border-line pl-3');
+    li.append(el('p', 'font-display font-semibold uppercase tracking-wide text-[15px]', title));
+    if (missing.length) {
+      li.append(el('p', 'mt-1 text-sm text-muted', 'Enter ' + missing.join(', ') + ' to see this step.'));
+    } else {
+      lines.forEach((l, i) => li.append(el('p', 'mt-0.5 font-mono text-sm break-words ' + (i === lines.length - 1 ? 'font-semibold text-accent-ink' : ''), l)));
+    }
+    return li;
+  }
+
+  function updateSingle() {
+    const { nums: n, invalid } = singleNumbers();
+    const r = Perf.computeReading(n);
+    const v = single.values;
+    const label = (k) => PERF_FIELDS[k].label.toLowerCase();
+    const miss = (...keys) => keys.filter((k) => n[k] === null).map(label);
+
+    q('[data-role="single-source"]').textContent = single.source
+      ? `Manual reading ${single.source} (p.46)`
+      : 'Your readings';
+    renderErrata(q('[data-role="single-errata"]'),
+      single.source ? manualTest(single.source[0]).errata.filter((e) => e.includes(single.source)) : []);
+
+    q('[data-role="single-results"]').replaceChildren(
+      resultRow('Inlet pressure (abs)', fmt(r.inletAbs, 3), 'bar'),
+      resultRow('Exhaust pressure (abs)', fmt(r.exhaustAbs, 3), 'bar'),
+      resultRow('Brake torque', fmt(r.torque, 4), 'N·m'),
+      resultRow('Shaft power', fmt(r.power, 1), 'W', true),
+      resultRow('Steam flow', r.flow === null ? '—' : (r.flow * 1000).toFixed(3), '×10⁻³ kg/s'),
+      resultRow('Specific steam consumption', fmt(r.ssc, 1), 'kg/kWh', true),
+    );
+
+    const warnings = [];
+    if (invalid) warnings.push('Some entries aren’t numbers — check the highlighted boxes.');
+    if (r.exhaustAbs !== null && r.exhaustAbs <= 0) warnings.push('Exhaust pressure is at or below absolute zero — a gauge reading can’t be lower than −(atmospheric pressure).');
+    if (r.inletAbs !== null && r.exhaustAbs !== null && r.inletAbs <= r.exhaustAbs) warnings.push('Inlet pressure should be higher than exhaust pressure.');
+    if (n.rpm !== null && n.rpm > S220.overspeedRpm) warnings.push('Speed is above the 40 000 rev/min overspeed trip — check the reading.');
+    if (n.loadN !== null && n.loadN < 0) warnings.push('Brake load is negative — re-zero the load indicator (manual p.31).');
+    const warnBox = q('[data-role="single-warnings"]');
+    warnBox.textContent = warnings.join(' ');
+    warnBox.hidden = warnings.length === 0;
+
+    const kgs = r.flow;
+    q('[data-role="single-steps"]').replaceChildren(
+      step('1. Absolute inlet pressure', [
+        'p₁ = p₁(gauge) + p(atm)',
+        `p₁ = ${v.inletBarG} + ${v.atmMbar}/1000`,
+        `p₁ = ${fmt(r.inletAbs, 3)} bar`,
+      ], miss('inletBarG', 'atmMbar')),
+      step('2. Absolute exhaust pressure', [
+        'p₂ = p₂(gauge) + p(atm)',
+        `p₂ = ${v.exhaustBarG} + ${v.atmMbar}/1000`,
+        `p₂ = ${fmt(r.exhaustAbs, 3)} bar`,
+      ], miss('exhaustBarG', 'atmMbar')),
+      step('3. Brake torque', [
+        'T = F × r   (r = 0.023 m, brake effective radius)',
+        `T = ${v.loadN} × 0.023`,
+        `T = ${fmt(r.torque, 4)} N·m`,
+      ], miss('loadN')),
+      step('4. Shaft power', [
+        'P = T × 2πN / 60',
+        `P = ${fmt(r.torque, 4)} × 2π × ${v.rpm} / 60`,
+        `P = ${fmt(r.power, 1)} W`,
+      ], miss('loadN', 'rpm')),
+      step('5. Steam flow', [
+        'ṁ = V / t   (1 cm³ of condensate = 1 g)',
+        `ṁ = ${v.condensateCm3} g / ${v.condensateTimeS} s`,
+        `ṁ = ${kgs === null ? '—' : (kgs * 1000).toFixed(3)} g/s = ${kgs === null ? '—' : (kgs * 1000).toFixed(3)}×10⁻³ kg/s`,
+      ], miss('condensateCm3', 'condensateTimeS')),
+      step('6. Specific steam consumption', [
+        'SSC = ṁ × 3600 / P   (P in kW)',
+        `SSC = ${kgs === null ? '—' : (kgs * 1000).toFixed(3)}×10⁻³ × 3600 / ${r.power === null ? '—' : (r.power / 1000).toFixed(4)}`,
+        `SSC = ${fmt(r.ssc, 1)} kg/kWh`,
+      ], miss('condensateCm3', 'condensateTimeS', 'loadN', 'rpm')),
+    );
+  }
+
+  q('[data-action="single-example"]').addEventListener('click', () => {
+    single = structuredClone(SINGLE_EXAMPLE);
+    Store.set('perf:single', single);
+    renderSingleFields();
+    updateSingle();
+  });
+  q('[data-action="single-clear"]').addEventListener('click', () => {
+    single = { values: Object.fromEntries(SINGLE_KEYS.map((k) => [k, ''])), source: null };
+    single.values.atmMbar = '1013';
+    single.values.condensateCm3 = '200';
+    Store.set('perf:single', single);
+    renderSingleFields();
+    updateSingle();
+  });
+
+  // ----- Test table -----
+  const edited = Store.get('perf:tests', {});
+  let testId = Store.get('perf:test', 'B');
+  if (testId !== MY_TEST_ID && !manualTest(testId)) testId = 'B';
+  let test;
+
+  const select = q('[data-role="test-select"]');
+  MANUAL_DATA.forEach((t) => {
+    const o = el('option', '', `Manual test ${t.id} — exp. ${t.experiment}: inlet ${t.inletBarG} bar g, exhaust ${t.exhaustBarG} bar g`);
+    o.value = t.id;
+    select.append(o);
+  });
+  const mine = el('option', '', 'My readings');
+  mine.value = MY_TEST_ID;
+  select.append(mine);
+
+  function loadTest(id) {
+    testId = id;
+    Store.set('perf:test', id);
+    select.value = id;
+    test = structuredClone(edited[id] || (id === MY_TEST_ID ? blankTestState() : manualTestState(manualTest(id))));
+    renderTest();
+  }
+
+  function saveTest() {
+    edited[testId] = test;
+    Store.set('perf:tests', edited);
+    renderTestStatus();
+  }
+
+  function rowLabel(i) { return testId === MY_TEST_ID ? String(i + 1) : `${testId}.${i + 1}`; }
+
+  function testNumbers() {
+    const f = {};
+    for (const k of TEST_KEYS) f[k] = parseNum(test.fields[k]).value;
+    return f;
+  }
+
+  function computeRows() {
+    const f = testNumbers();
+    return test.rows.map((row, i) => ({
+      label: rowLabel(i),
+      rpm: parseNum(row.rpm).value,
+      loadN: parseNum(row.loadN).value,
+      ...Perf.computeReading({ ...f, rpm: parseNum(row.rpm).value, loadN: parseNum(row.loadN).value }),
+    }));
+  }
+
+  function renderTestStatus() {
+    const t = manualTest(testId);
+    q('[data-role="test-status"]').textContent = t
+      ? `Manual p.${t.page} · ${edited[testId] ? 'edited on this device' : 'as published' + (t.errata.length ? ' (errata corrected)' : '')}`
+      : 'Your own readings · saved on this device';
+    q('[data-action="test-reset"]').textContent = t ? 'Reset to manual data' : 'Clear readings';
+  }
+
+  function renderTest() {
+    renderTestStatus();
+    q('[data-role="test-fields"]').replaceChildren(...TEST_KEYS.map((k) => numberField(k, test.fields[k], (v) => {
+      test.fields[k] = v;
+      saveTest();
+      updateTestResults();
+    })));
+    const t = manualTest(testId);
+    renderErrata(q('[data-role="test-errata"]'), t ? t.errata : []);
+
+    const body = q('[data-role="test-rows"]');
+    body.replaceChildren();
+    test.rows.forEach((row, i) => {
+      const li = el('li', 'grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1fr)_2.75rem] sm:grid-cols-[3rem_8rem_8rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_2.75rem] items-center gap-x-2 gap-y-1 py-2 border-t border-line');
+      li.dataset.row = rowLabel(i);
+      li.append(el('span', 'font-mono text-sm text-muted', rowLabel(i)));
+      for (const key of ['rpm', 'loadN']) {
+        const input = el('input', 'h-11 w-full min-w-0 px-2 bg-bg border border-line rounded-[2px] font-mono text-base text-fg focus:border-accent outline-none aria-[invalid=true]:border-accent-ink');
+        input.type = 'text';
+        input.inputMode = 'decimal';
+        input.autocomplete = 'off';
+        input.value = row[key];
+        input.setAttribute('aria-label', `${PERF_FIELDS[key].label}, row ${rowLabel(i)}`);
+        input.setAttribute('aria-invalid', String(!parseNum(row[key]).valid));
+        input.addEventListener('input', () => {
+          row[key] = input.value;
+          input.setAttribute('aria-invalid', String(!parseNum(input.value).valid));
+          saveTest();
+          updateTestResults();
+        });
+        li.append(input);
+      }
+      const btn = el('button', 'sm:order-2 w-11 h-11 inline-flex items-center justify-center text-muted hover:text-fg border border-transparent hover:border-line rounded-[2px] disabled:opacity-40');
+      btn.type = 'button';
+      btn.setAttribute('aria-label', `Remove row ${rowLabel(i)}`);
+      btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+      btn.disabled = test.rows.length <= 1;
+      btn.addEventListener('click', () => {
+        test.rows.splice(i, 1);
+        saveTest();
+        renderTest();
+      });
+      li.append(btn);
+      // Results: under the inputs on phones (labelled inline), in their own columns from sm up.
+      const out = el('div', 'col-start-2 col-span-3 sm:col-start-auto sm:col-span-3 sm:order-1 grid grid-cols-3 gap-2');
+      for (const [key, name, unit] of [['torque', 'Torque', 'N·m'], ['power', 'Power', 'W'], ['ssc', 'SSC', 'kg/kWh']]) {
+        const cell = el('p', 'font-mono text-sm sm:text-right leading-tight');
+        cell.append(el('span', 'block sm:sr-only text-xs text-muted', name));
+        const value = el('span', 'tabular-nums', '—');
+        value.dataset.out = key;
+        cell.append(value, el('span', 'sm:sr-only text-xs text-muted', ' ' + unit));
+        out.append(cell);
+      }
+      li.append(out);
+      body.append(li);
+    });
+    updateTestResults();
+  }
+
+  function updateTestResults() {
+    const rows = computeRows();
+    const items = q('[data-role="test-rows"]').children;
+    rows.forEach((r, i) => {
+      items[i].querySelector('[data-out="torque"]').textContent = fmt(r.torque, 4);
+      items[i].querySelector('[data-out="power"]').textContent = fmt(r.power, 1);
+      items[i].querySelector('[data-out="ssc"]').textContent = fmt(r.ssc, 1);
+    });
+    const flow = rows.length ? rows[0].flow : null;
+    q('[data-role="test-flow"]').textContent = flow === null
+      ? 'Steam flow ṁ: enter condensate volume and time.'
+      : `Steam flow ṁ = ${(flow * 1000).toFixed(3)}×10⁻³ kg/s (one value per test)`;
+    updateCharts(rows);
+  }
+
+  select.addEventListener('change', () => loadTest(select.value));
+  q('[data-action="row-add"]').addEventListener('click', () => {
+    test.rows.push({ rpm: '', loadN: '' });
+    saveTest();
+    renderTest();
+    const inputs = q('[data-role="test-rows"]').lastElementChild.querySelectorAll('input');
+    inputs[0].focus();
+  });
+  q('[data-action="test-reset"]').addEventListener('click', () => {
+    if (testId === MY_TEST_ID && !window.confirm('Clear all of your readings for this test?')) return;
+    delete edited[testId];
+    Store.set('perf:tests', edited);
+    loadTest(testId);
+  });
+  q('[data-action="test-csv"]').addEventListener('click', () => {
+    const f = test.fields;
+    const rows = computeRows();
+    const name = testId === MY_TEST_ID ? 'My readings' : `Manual test ${testId}`;
+    const round = (v, dp) => (v === null ? null : Number(v.toFixed(dp)));
+    Csv.download(`s220-${testId === MY_TEST_ID ? 'my-readings' : 'test-' + testId}.csv`, [
+      ['S220 turbine performance', name],
+      ['Atmospheric pressure (mbar)', f.atmMbar],
+      ['Inlet pressure (bar g)', f.inletBarG],
+      ['Exhaust pressure (bar g)', f.exhaustBarG],
+      ['Condensate (cm3)', f.condensateCm3],
+      ['Collection time (s)', f.condensateTimeS],
+      ['Steam flow (kg/s)', round(rows[0] ? rows[0].flow : null, 7)],
+      [],
+      ['Row', 'Speed (rev/min)', 'Brake load (N)', 'Torque (N·m)', 'Shaft power (W)', 'SSC (kg/kWh)'],
+      ...rows.map((r) => [r.label, r.rpm, r.loadN, round(r.torque, 5), round(r.power, 2), round(r.ssc, 1)]),
+    ]);
+  });
+
+  // ----- Charts (Chart.js, loaded on demand; the table carries every value if it fails) -----
+  const CHARTS = [
+    { key: 'torque', unit: 'N·m', dp: 4 },
+    { key: 'power', unit: 'W', dp: 1 },
+    { key: 'ssc', unit: 'kg/kWh', dp: 1 },
+  ];
+  const charts = {};
+  let chartsRequested = false;
+
+  function chartColors() {
+    return { series: cssVar('--series'), surface: cssVar('--surface'), line: cssVar('--line'), muted: cssVar('--muted'), fg: cssVar('--fg') };
+  }
+
+  function chartOptions(spec, c) {
+    const axis = (title) => ({
+      title: { display: !!title, text: title, color: c.muted, font: { family: 'Barlow', size: 13 } },
+      ticks: { color: c.muted, font: { family: 'JetBrains Mono', size: 11 }, maxTicksLimit: 6 },
+      grid: { color: c.line },
+      border: { color: c.line },
+    });
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      interaction: { mode: 'nearest', intersect: false, axis: 'x' },
+      scales: {
+        x: { type: 'linear', ...axis('Speed (rev/min)') },
+        y: { beginAtZero: true, ...axis('') },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: c.surface, titleColor: c.fg, bodyColor: c.fg, borderColor: c.line, borderWidth: 1,
+          displayColors: false,
+          titleFont: { family: 'JetBrains Mono' }, bodyFont: { family: 'JetBrains Mono' },
+          callbacks: {
+            title: (items) => `${items[0].raw.label} · ${items[0].raw.x} rev/min`,
+            label: (item) => `${item.raw.y.toFixed(spec.dp)} ${spec.unit}`,
+          },
+        },
+      },
+    };
+  }
+
+  function datasetStyle(c) {
+    return {
+      borderColor: c.series, backgroundColor: c.series,
+      pointBackgroundColor: c.series, pointBorderColor: c.surface, pointBorderWidth: 2,
+      pointRadius: 5, pointHoverRadius: 7, pointHitRadius: 14, borderWidth: 2, tension: 0,
+    };
+  }
+
+  function points(rows, key) {
+    return rows.filter((r) => r.rpm !== null && r[key] !== null)
+      .map((r) => ({ x: r.rpm, y: r[key], label: r.label }))
+      .sort((a, b) => a.x - b.x);
+  }
+
+  function updateCharts(rows) {
+    for (const spec of CHARTS) {
+      const chart = charts[spec.key];
+      if (!chart) continue;
+      chart.data.datasets[0].data = points(rows, spec.key);
+      chart.update('none');
+    }
+  }
+
+  function restyleCharts() {
+    const c = chartColors();
+    for (const spec of CHARTS) {
+      const chart = charts[spec.key];
+      if (!chart) continue;
+      chart.options = chartOptions(spec, c);
+      Object.assign(chart.data.datasets[0], datasetStyle(c));
+      chart.update('none');
+    }
+  }
+
+  function ensureCharts() {
+    if (chartsRequested) return;
+    chartsRequested = true;
+    const status = q('[data-role="charts-status"]');
+    status.textContent = 'Loading charts…';
+    status.hidden = false;
+    Libs.load(CHART_LIB_URL).then(() => {
+      if (destroyed) return;
+      status.hidden = true;
+      const c = chartColors();
+      const rows = computeRows();
+      for (const spec of CHARTS) {
+        charts[spec.key] = new window.Chart(q(`[data-chart="${spec.key}"]`), {
+          type: 'line',
+          data: { datasets: [{ data: points(rows, spec.key), ...datasetStyle(c) }] },
+          options: chartOptions(spec, c),
+        });
+      }
+    }, () => {
+      if (destroyed) return;
+      chartsRequested = false;   // allow a retry next time the tab is opened
+      status.textContent = 'Charts couldn’t load (no internet connection?). Every value is in the table above.';
+    });
+  }
+
+  window.addEventListener('themechange', restyleCharts);
+  cleanups.push(() => window.removeEventListener('themechange', restyleCharts));
+
+  // ----- Start -----
+  renderSingleFields();
+  updateSingle();
+  loadTest(testId);
+  setMode(Store.get('perf:mode', 'single') === 'table' ? 'table' : 'single');
+
+  return {
+    destroy() {
+      destroyed = true;
+      Object.values(charts).forEach((ch) => ch.destroy());
+      cleanups.forEach((fn) => fn());
+    },
+  };
+}
+
 // ===== Theme =====
 document.getElementById('theme-toggle').addEventListener('click', () => {
   const dark = document.documentElement.classList.toggle('dark');
   try { localStorage.setItem('s220-theme', dark ? 'dark' : 'light'); } catch (e) {}
+  window.dispatchEvent(new Event('themechange'));
 });
 
 // ===== Home: search + filters =====
