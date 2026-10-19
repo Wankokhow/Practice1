@@ -1130,8 +1130,8 @@ function rankineSchematic(interactive) {
       <text x="172" y="170" text-anchor="end" class="${label}">Condenser</text>`)}
 
     ${comp('cooling', 'Cooling water', `${hit(258, 115, 102, 95)}
-      <text x="296" y="131" text-anchor="middle" class="${small}">out ←</text>
-      <text x="296" y="210" text-anchor="middle" class="${small}">in →</text>
+      <text x="296" y="131" text-anchor="middle" class="${small}">out →</text>
+      <text x="296" y="210" text-anchor="middle" class="${small}">in ←</text>
       <text x="296" y="171" text-anchor="middle" class="${label}">Cooling</text>
       <text x="296" y="184" text-anchor="middle" class="${label}">water</text>`)}
 
@@ -1145,7 +1145,7 @@ function rankineSchematic(interactive) {
 
     ${comp('pump', 'Feed pump', `${hit(100, 255, 50, 70)}
       <circle cx="125" cy="280" r="13" fill="none" stroke="currentColor" class="${shape}"/>
-      <polygon points="131,280 121,274 121,286" class="fill-fg"/>
+      <polygon points="119,280 129,274 129,286" class="fill-fg"/>
       <text x="125" y="310" text-anchor="middle" class="${label}">Pump</text>`)}
 
     ${state(1, 149, 280)}
