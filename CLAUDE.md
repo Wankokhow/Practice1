@@ -70,7 +70,7 @@ history.)
   and calling `init(root)`; unknown hash → home.
 - **Home**: card grid + text search (title/summary/keywords) + filter
   chips (type, topic).
-- **Theme**: Tailwind `darkMode: 'class'` on `<html>`; choice in
+- **Theme**: `.dark` class on `<html>`, set before first paint; choice in
   `localStorage`, defaulting to the OS preference.
 - **Persistence**: calculator edits auto-save to `localStorage`, with
   "Reset to manual data"; CSV export of inputs + results.
