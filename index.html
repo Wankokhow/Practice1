@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>S220 Lab Portal</title>
+<meta name="description" content="Tools and lessons for the P.A. Hilton S220 Rankine Cycle Steam Turbine lab: a turbine performance calculator and an interactive Rankine cycle explainer.">
 
 <!-- Apply the saved (or OS) theme before first paint to avoid a flash. -->
 <script>
@@ -47,7 +48,7 @@
   :root {
     --bg: #f4f5f6; --surface: #ffffff; --line: #d3d8dc;
     --fg: #16181a; --muted: #555d64;
-    --accent: #f08a24; --accent-ink: #b35c00; --on-accent: #16181a;
+    --accent: #f08a24; --accent-ink: #a85500; --on-accent: #16181a;   /* accent-ink ≥4.5:1 on bg and surface */
     --steel: #2f6aa3;
     --series: #b35c00;          /* chart marks; validated vs surface (dataviz validator) */
     color-scheme: light;
@@ -85,7 +86,7 @@
       Tools &amp; lessons <span class="text-accent-ink" id="item-count"></span>
     </h1>
 
-    <label class="mt-4 flex items-center gap-2 h-12 px-3 bg-surface border border-line rounded-[2px] focus-within:border-accent">
+    <label class="mt-4 flex items-center gap-2 h-12 px-3 bg-surface border border-line rounded-[2px] focus-within:border-accent focus-within:outline-solid focus-within:outline-2 focus-within:outline-accent">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="text-muted shrink-0" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
       <span class="sr-only">Search tools and lessons</span>
       <input id="search" type="search" placeholder="Search tools and lessons" autocomplete="off" class="flex-1 min-w-0 bg-transparent text-base text-fg placeholder:text-muted outline-none">
@@ -107,7 +108,7 @@
 
   <!-- Item view: the selected tool or lesson is mounted into #item-mount -->
   <section id="view-item" hidden>
-    <a href="#/" class="inline-flex items-center gap-1.5 min-h-[44px] text-muted hover:text-fg">
+    <a href="#/" id="back-home" class="inline-flex items-center gap-1.5 min-h-[44px] text-muted hover:text-fg">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
       All tools &amp; lessons
     </a>
@@ -149,9 +150,9 @@
       <p data-role="step-count" class="font-mono text-xs uppercase text-steel"></p>
       <h2 data-role="step-title" tabindex="-1" class="mt-1 font-display font-semibold text-2xl uppercase tracking-wide outline-none"></h2>
       <div data-role="step-text" class="mt-2 flex flex-col gap-2 text-[15px] leading-normal"></div>
-      <div class="mt-4 flex items-center justify-between gap-2">
+      <div class="mt-4 flex flex-wrap items-center justify-between gap-2">
         <button type="button" data-action="step-prev" class="h-11 px-4 border border-line rounded-[2px] font-display font-semibold uppercase tracking-wider text-sm hover:border-accent disabled:opacity-40">Back</button>
-        <ol data-role="step-dots" class="flex gap-1.5" aria-label="Steps"></ol>
+        <ol data-role="step-dots" class="order-first w-full flex justify-center gap-1 sm:order-none sm:w-auto" aria-label="Steps"></ol>
         <button type="button" data-action="step-next" class="h-11 px-4 border border-accent bg-accent text-on-accent rounded-[2px] font-display font-semibold uppercase tracking-wider text-sm disabled:opacity-40">Next</button>
       </div>
     </div>
@@ -540,7 +541,7 @@ function numberField(key, value, onInput) {
   const label = el('label', 'text-sm text-muted');
   label.htmlFor = id;
   label.append(f.label + ' ', el('span', 'font-mono text-xs', `(${f.unit})`));
-  const input = el('input', 'h-12 w-full min-w-0 px-3 bg-bg border border-line rounded-[2px] font-mono text-[17px] text-fg focus:border-accent outline-none aria-[invalid=true]:border-accent-ink');
+  const input = el('input', 'h-12 w-full min-w-0 px-3 bg-bg border border-line rounded-[2px] font-mono text-[17px] text-fg focus:border-accent focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-accent aria-[invalid=true]:border-accent-ink');
   input.id = id;
   input.type = 'text';
   input.autocomplete = 'off';
@@ -796,7 +797,7 @@ function initTurbineTool(root) {
       li.dataset.row = rowLabel(i);
       li.append(el('span', 'font-mono text-sm text-muted', rowLabel(i)));
       for (const key of ['rpm', 'loadN']) {
-        const input = el('input', 'h-11 w-full min-w-0 px-2 bg-bg border border-line rounded-[2px] font-mono text-base text-fg focus:border-accent outline-none aria-[invalid=true]:border-accent-ink');
+        const input = el('input', 'h-11 w-full min-w-0 px-2 bg-bg border border-line rounded-[2px] font-mono text-base text-fg focus:border-accent focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-accent aria-[invalid=true]:border-accent-ink');
         input.type = 'text';
         input.inputMode = 'decimal';
         input.autocomplete = 'off';
@@ -1088,16 +1089,17 @@ function rankineSchematic(interactive) {
     const color = kind === 'steam' ? 'stroke-accent-ink' : 'stroke-steel';
     const width = kind === 'cooling' ? 'stroke-[2]' : 'stroke-[4]';
     return `<g data-comp="${id}" class="transition-opacity duration-200 data-[state=dim]:opacity-25">
-      <path d="${d}" fill="none" class="${color} ${width}" stroke-linejoin="round"/>
-      <path d="${d}" fill="none" data-flow class="stroke-surface stroke-[1.5]" stroke-dasharray="3 9" stroke-linejoin="round"/>
+      <path d="${d}" fill="none" stroke="currentColor" stroke-width="3" class="${color} ${width}" stroke-linejoin="round"/>
+      <path d="${d}" fill="none" stroke="none" data-flow class="stroke-surface stroke-[1.5]" stroke-dasharray="3 9" stroke-linejoin="round"/>
     </g>`;
   };
-  const state = (n, x, y) => `<g aria-hidden="true"><circle cx="${x}" cy="${y}" r="8" class="fill-bg stroke-fg stroke-[1.2]"/><text x="${x}" y="${y + 3.5}" text-anchor="middle" class="fill-fg font-mono text-[10px] font-semibold">${n}</text></g>`;
+  const state = (n, x, y) => `<g aria-hidden="true"><circle cx="${x}" cy="${y}" r="8" fill="#fff" stroke="currentColor" class="fill-bg stroke-fg stroke-[1.2]"/><text x="${x}" y="${y + 3.5}" text-anchor="middle" class="fill-fg font-mono text-[10px] font-semibold">${n}</text></g>`;
   // Hit areas are transparent rects larger than the drawn part (≥44 px at phone width).
   const hit = (x, y, w, h) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="transparent"/>`;
 
-  return `<svg viewBox="0 0 360 330" class="w-full h-auto max-w-[520px] mx-auto block" role="img" aria-labelledby="rk-svg-title">
-    <title id="rk-svg-title">Schematic of the S220 Rankine cycle: boiler, throttle valve, turbine with brake, condenser with cooling water, feed tank with ejector, and feed pump, joined in a loop.</title>
+  // A group (not an image) when it holds focusable parts, so screen readers can reach them.
+  return `<svg viewBox="0 0 360 330" class="w-full h-auto max-w-[520px] mx-auto block" role="${interactive ? 'group' : 'img'}" aria-labelledby="rk-svg-title-${interactive ? 'x' : 'w'}">
+    <title id="rk-svg-title-${interactive ? 'x' : 'w'}">Schematic of the S220 Rankine cycle: boiler, throttle valve, turbine with brake, condenser with cooling water, feed tank with ejector, and feed pump, joined in a loop.</title>
     ${pipe('pipe-feed', 'M112 280 H57 V258', 'water')}
     ${pipe('pipe-steam', 'M57 112 V60 H185', 'steam')}
     ${pipe('pipe-exhaust', 'M215 92 V120', 'steam')}
@@ -1106,24 +1108,24 @@ function rankineSchematic(interactive) {
     ${pipe('pipe-cooling', 'M330 195 H260 M260 140 H330', 'cooling')}
 
     ${comp('boiler', 'Boiler', `${hit(10, 105, 95, 160)}
-      <rect x="20" y="112" width="75" height="146" rx="2" class="${shape}"/>
+      <rect x="20" y="112" width="75" height="146" rx="2" fill="none" stroke="currentColor" class="${shape}"/>
       <path d="M35 235 l6 -8 l6 8 l6 -8 l6 8 l6 -8 l6 8" fill="none" class="stroke-accent-ink stroke-[1.5]"/>
       <text x="57.5" y="182" text-anchor="middle" class="${label}">Boiler</text>
       <text x="57.5" y="196" text-anchor="middle" class="${small}">6 kW</text>`)}
 
     ${comp('throttle', 'Throttle valve', `${hit(108, 30, 48, 50)}
-      <polygon points="122,51 138,69 138,51 122,69" class="${shape}"/>
+      <polygon points="122,51 138,69 138,51 122,69" fill="none" stroke="currentColor" class="${shape}"/>
       <text x="130" y="42" text-anchor="middle" class="${label}">Throttle</text>`)}
 
     ${comp('turbine', 'Impulse turbine and brake', `${hit(180, 0, 120, 100)}
       <line x1="215" y1="47" x2="215" y2="24" class="stroke-fg stroke-[1.5]"/>
-      <circle cx="215" cy="16" r="8" class="${shape}"/>
+      <circle cx="215" cy="16" r="8" fill="none" stroke="currentColor" class="${shape}"/>
       <text x="230" y="20" class="${small}">brake</text>
-      <polygon points="185,52 245,40 245,94 185,82" class="${shape}"/>
+      <polygon points="185,52 245,40 245,94 185,82" fill="none" stroke="currentColor" class="${shape}"/>
       <text x="252" y="72" class="${label}">Turbine</text>`)}
 
     ${comp('condenser', 'Condenser', `${hit(105, 115, 155, 105)}
-      <rect x="180" y="120" width="70" height="95" rx="2" class="${shape}"/>
+      <rect x="180" y="120" width="70" height="95" rx="2" fill="none" stroke="currentColor" class="${shape}"/>
       <path d="M250 140 H200 l40 10 l-40 10 l40 10 l-40 10 l40 10 H250" fill="none" class="stroke-steel stroke-[1.5]"/>
       <text x="172" y="170" text-anchor="end" class="${label}">Condenser</text>`)}
 
@@ -1134,7 +1136,7 @@ function rankineSchematic(interactive) {
       <text x="296" y="184" text-anchor="middle" class="${label}">water</text>`)}
 
     ${comp('tank', 'Feed tank and ejector', `${hit(150, 240, 110, 90)}
-      <rect x="160" y="252" width="45" height="52" rx="2" class="${shape}"/>
+      <rect x="160" y="252" width="45" height="52" rx="2" fill="none" stroke="currentColor" class="${shape}"/>
       <path d="M163 272 H202" class="stroke-steel stroke-[1]" stroke-dasharray="3 3"/>
       <line x1="205" y1="262" x2="228" y2="262" class="stroke-fg stroke-[1.5]"/>
       <text x="231" y="265" class="${small}">ejector</text>
@@ -1142,7 +1144,7 @@ function rankineSchematic(interactive) {
       <text x="182.5" y="320" text-anchor="middle" class="${label}">Feed tank</text>`)}
 
     ${comp('pump', 'Feed pump', `${hit(100, 255, 50, 70)}
-      <circle cx="125" cy="280" r="13" class="${shape}"/>
+      <circle cx="125" cy="280" r="13" fill="none" stroke="currentColor" class="${shape}"/>
       <polygon points="131,280 121,274 121,286" class="fill-fg"/>
       <text x="125" y="310" text-anchor="middle" class="${label}">Pump</text>`)}
 
@@ -1383,7 +1385,8 @@ function initRankineLesson(root) {
   const dots = q('[data-role="step-dots"]');
   RANKINE_STEPS.forEach((st, i) => {
     const li = el('li');
-    const b = el('button', 'w-3 h-3 rounded-full border border-fg block before:content-[""] relative before:absolute before:-inset-3');
+    const b = el('button', 'w-7 h-7 flex items-center justify-center rounded-full');
+    b.append(el('span', 'w-3 h-3 rounded-full border border-fg'));
     b.type = 'button';
     b.setAttribute('aria-label', `Step ${i + 1}: ${st.title}`);
     b.addEventListener('click', () => showStep(i, true));
@@ -1407,8 +1410,8 @@ function initRankineLesson(root) {
     q('[data-action="step-prev"]').disabled = i === 0;
     q('[data-action="step-next"]').disabled = i === RANKINE_STEPS.length - 1;
     [...dots.querySelectorAll('button')].forEach((b, j) => {
-      b.classList.toggle('bg-accent', j === i);
-      b.classList.toggle('border-accent', j === i);
+      b.firstChild.classList.toggle('bg-accent', j === i);
+      b.firstChild.classList.toggle('border-accent', j === i);
       if (j === i) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
     });
     const all = i === 0;
@@ -1696,6 +1699,7 @@ function showHome(params) {
 
 function showItem(entry) {
   unmount();
+  document.getElementById('back-home').href = homeHash(homeState);   // return to the same search/filters
   els.itemMeta.className = 'mt-2 flex justify-between font-mono text-xs uppercase ' + (entry.type === 'tool' ? 'text-accent-ink' : 'text-steel');
   els.itemMeta.replaceChildren(
     Object.assign(document.createElement('span'), { textContent: entry.type }),

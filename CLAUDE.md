@@ -127,9 +127,18 @@ history.)
   `rankineCycle(5.6, 0.5, η=0.134)` — note the actual turbine exit is
   slightly superheated. 7-question quiz with explanations and score.
   T–s parts show loading/failed messages; the rest works without steam.
-- `[ ]` **Phase 5 — Polish**: no horizontal scroll at 375px, both themes
-  legible, deep links, no leaked loops on navigation, graceful CDN
-  failure.
+- `[x]` **Phase 5 — Polish**: audited every view at 320/375/768/1280px in
+  both themes with axe-core (WCAG 2.2 AA) — clean; no horizontal scroll;
+  light `--accent-ink` darkened to `#a85500` for 4.5:1 text contrast;
+  inputs get a 2px `outline-solid` focus ring (v4 `outline-none` kills
+  outline style); back link and browser Back keep home filters; no leaked
+  charts/listeners after rapid switching; works with all CDNs blocked
+  (SVG presentation-attribute fallbacks) and with storage blocked.
+
+**Phase one complete.** `index.html` ships the shell, the Turbine
+Performance Calculator and the Rankine Cycle Explainer. (Verification
+used Playwright + axe-core run outside the repo — no tooling is committed,
+per the single-file constraint.)
 
 **Later phases (not in phase one)**: isentropic/thermal efficiency,
 retardation (friction) test, steam quality by throttling, heat/power
